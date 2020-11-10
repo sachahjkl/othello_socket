@@ -15,7 +15,6 @@
 #include <signal.h>
 #include <sys/signalfd.h>
 
-
 #include <gtk/gtk.h>
 
 
@@ -25,14 +24,14 @@
 /* Variables globales */
   int damier[8][8];	// tableau associe au damier
   int couleur;		// 0 : pour noir, 1 : pour blanc
-  
+
   int port;		// numero port passé lors de l'appel
 
   char *addr_j2, *port_j2;	// Info sur adversaire
 
 
   pthread_t thr_id;	// Id du thread fils gerant connexion socket
-  
+
   int sockfd, newsockfd=-1; // descripteurs de socket
   int addr_size;	 // taille adresse
   struct sockaddr *their_addr;	// structure pour stocker adresse adversaire
@@ -44,11 +43,11 @@
 /* Variables globales associées à l'interface graphique */
   GtkBuilder  *  p_builder   = NULL;
   GError      *  p_err       = NULL;
-   
 
 
-// Entetes des fonctions  
-  
+
+// Entetes des fonctions
+
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
 void change_img_case(int col, int lig, int couleur_j);
 
@@ -127,12 +126,12 @@ void affich_joueur(char *login, char *adresse, char *port);
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
 {
   char *c;
-  
+
   c=malloc(3*sizeof(char));
-  
+
   c=strncpy(c, coord, 1);
   c[1]='\0';
-  
+
   if(strcmp(c, "A")==0)
   {
     *col=0;
@@ -165,7 +164,7 @@ void coord_to_indexes(const gchar *coord, int *col, int *lig)
   {
     *col=7;
   }
-    
+
   *lig=atoi(coord+1)-1;
 }
 
@@ -206,7 +205,7 @@ void indexes_to_coord(int col, int lig, char *coord)
   {
     c='H';
   }
-    
+
   sprintf(coord, "%c%d\0", c, lig+1);
 }
 
@@ -214,11 +213,11 @@ void indexes_to_coord(int col, int lig, char *coord)
 void change_img_case(int col, int lig, int couleur_j)
 {
   char * coord;
-  
+
   coord=malloc(3*sizeof(char));
 
   indexes_to_coord(col, lig, coord);
-  
+
   if(couleur_j)
   { // image pion blanc
     gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_blanc.png");
@@ -245,10 +244,10 @@ void set_label_J2(char *texte)
 void set_score_J1(int score)
 {
   char *s;
-  
+
   s=malloc(5*sizeof(char));
   sprintf(s, "%d\0", score);
-  
+
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_ScoreJ1")), s);
 }
 
@@ -256,9 +255,9 @@ void set_score_J1(int score)
 int get_score_J1(void)
 {
   const gchar *c;
-  
+
   c=gtk_label_get_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_ScoreJ1")));
-  
+
   return atoi(c);
 }
 
@@ -266,10 +265,10 @@ int get_score_J1(void)
 void set_score_J2(int score)
 {
   char *s;
-  
+
   s=malloc(5*sizeof(char));
   sprintf(s, "%d\0", score);
-  
+
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_ScoreJ2")), s);
 }
 
@@ -277,9 +276,9 @@ void set_score_J2(int score)
 int get_score_J2(void)
 {
   const gchar *c;
-  
+
   c=gtk_label_get_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_ScoreJ2")));
-  
+
   return atoi(c);
 }
 
@@ -289,22 +288,22 @@ static void coup_joueur(GtkWidget *p_case)
 {
   int col, lig, type_msg, nb_piece, score;
   char buf[MAXDATASIZE];
-  
+
   // Traduction coordonnees damier en indexes matrice damier
   coord_to_indexes(gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))), &col, &lig);
-  
+
 
   /***** TO DO *****/
-    
+
 }
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
 char *lecture_addr_serveur(void)
 {
   GtkWidget *entry_addr_srv;
-  
+
   entry_addr_srv = (GtkWidget *) gtk_builder_get_object(p_builder, "entry_adr");
-  
+
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_srv));
 }
 
@@ -312,9 +311,9 @@ char *lecture_addr_serveur(void)
 char *lecture_port_serveur(void)
 {
   GtkWidget *entry_port_srv;
-  
+
   entry_port_srv = (GtkWidget *) gtk_builder_get_object(p_builder, "entry_port");
-  
+
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_srv));
 }
 
@@ -322,9 +321,9 @@ char *lecture_port_serveur(void)
 char *lecture_login(void)
 {
   GtkWidget *entry_login;
-  
+
   entry_login = (GtkWidget *) gtk_builder_get_object(p_builder, "entry_login");
-  
+
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_login));
 }
 
@@ -332,9 +331,9 @@ char *lecture_login(void)
 char *lecture_addr_adversaire(void)
 {
   GtkWidget *entry_addr_j2;
-  
+
   entry_addr_j2 = (GtkWidget *) gtk_builder_get_object(p_builder, "entry_addr_j2");
-  
+
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_j2));
 }
 
@@ -342,9 +341,9 @@ char *lecture_addr_adversaire(void)
 char *lecture_port_adversaire(void)
 {
   GtkWidget *entry_port_j2;
-  
+
   entry_port_j2 = (GtkWidget *) gtk_builder_get_object(p_builder, "entry_port_j2");
-  
+
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_j2));
 }
 
@@ -352,12 +351,12 @@ char *lecture_port_adversaire(void)
 void affiche_fenetre_gagne(void)
 {
   GtkWidget *dialog;
-    
+
   GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
-  
+
   dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez gagné!!!");
   gtk_dialog_run(GTK_DIALOG (dialog));
-  
+
   gtk_widget_destroy(dialog);
 }
 
@@ -365,12 +364,12 @@ void affiche_fenetre_gagne(void)
 void affiche_fenetre_perdu(void)
 {
   GtkWidget *dialog;
-    
+
   GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
-  
+
   dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez perdu!");
   gtk_dialog_run(GTK_DIALOG (dialog));
-  
+
   gtk_widget_destroy(dialog);
 }
 
@@ -378,7 +377,7 @@ void affiche_fenetre_perdu(void)
 static void clique_connect_serveur(GtkWidget *b)
 {
   /***** TO DO *****/
-  
+
 }
 
 /* Fonction desactivant bouton demarrer partie */
@@ -394,16 +393,16 @@ static void clique_connect_adversaire(GtkWidget *b)
   {
     // Deactivation bouton demarrer partie
     gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
-    
+
     // Recuperation  adresse et port adversaire au format chaines caracteres
     addr_j2=lecture_addr_adversaire();
     port_j2=lecture_port_adversaire();
-    
+
     printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
     printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
 
-    
-    pthread_kill(thr_id, SIGUSR1); 
+
+    pthread_kill(thr_id, SIGUSR1);
   }
 }
 
@@ -553,7 +552,7 @@ void init_interface_jeu(void)
   change_img_case(4, 3, 0);
   change_img_case(3, 4, 0);
   change_img_case(4, 4, 1);
-  
+
   // Initialisation des scores et des joueurs
   if(couleur==1)
   {
@@ -568,19 +567,19 @@ void init_interface_jeu(void)
 
   set_score_J1(2);
   set_score_J2(2);
-  
+
   /***** TO DO *****/
-  
+
 }
 
 /* Fonction reinitialisant la liste des joueurs sur l'interface graphique */
 void reset_liste_joueurs(void)
 {
   GtkTextIter start, end;
-  
+
   gtk_text_buffer_get_start_iter(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), &start);
   gtk_text_buffer_get_end_iter(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), &end);
-  
+
   gtk_text_buffer_delete(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), &start, &end);
 }
 
@@ -588,9 +587,9 @@ void reset_liste_joueurs(void)
 void affich_joueur(char *login, char *adresse, char *port)
 {
   const gchar *joueur;
-  
+
   joueur=g_strconcat(login, " - ", adresse, " : ", port, "\n", NULL);
-  
+
   gtk_text_buffer_insert_at_cursor(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), joueur, strlen(joueur));
 }
 
@@ -598,29 +597,29 @@ void affich_joueur(char *login, char *adresse, char *port)
 static void * f_com_socket(void *p_arg)
 {
   int i, nbytes, col, lig;
-  
+
   char buf[MAXDATASIZE], *tmp, *p_parse;
   int len, bytes_sent, t_msg_recu;
 
   sigset_t signal_mask;
   int fd_signal;
-  
+
   uint16_t type_msg, col_j2;
   uint16_t ucol, ulig;
-  
+
   /* Association descripteur au signal SIGUSR1 */
   sigemptyset(&signal_mask);
   sigaddset(&signal_mask, SIGUSR1);
-    
+
   if(sigprocmask(SIG_BLOCK, &signal_mask, NULL) == -1)
   {
     printf("[Pourt joueur %d] Erreur sigprocmask\n", port);
-    
+
     return 0;
   }
-    
+
   fd_signal = signalfd(-1, &signal_mask, 0);
-    
+
   if(fd_signal == -1)
   {
     printf("[port joueur %d] Erreur signalfd\n", port);
@@ -630,23 +629,23 @@ static void * f_com_socket(void *p_arg)
 
   /* Ajout descripteur du signal dans ensemble de descripteur utilisé avec fonction select */
   FD_SET(fd_signal, &master);
-  
+
   if(fd_signal>fdmax)
   {
     fdmax=fd_signal;
   }
 
-  
+
   while(1)
   {
     read_fds=master;	// copie des ensembles
-    
+
     if(select(fdmax+1, &read_fds, &write_fds, NULL, NULL)==-1)
     {
       perror("Problème avec select");
       exit(4);
     }
-    
+
     printf("[Port joueur %d] Entree dans boucle for\n", port);
     for(i=0; i<=fdmax; i++)
     {
@@ -657,32 +656,32 @@ static void * f_com_socket(void *p_arg)
         if(i==fd_signal)
         {
           /* Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse */
-          
-          
+
+
           /***** TO DO *****/
-          
+
         }
-      
+
         if(i==sockfd)
         { // Acceptation connexion adversaire
-	  
-	    
+
+
           /***** TO DO *****/
-	    
+
           gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
         }
         else
         { // Reception et traitement des messages du joueur adverse
-      
-      
+
+
           /***** TO DO *****/
 
-	    
+
         }
       }
     }
   }
-  
+
   return NULL;
 }
 
@@ -694,28 +693,28 @@ int main (int argc, char ** argv)
    if(argc!=2)
    {
      printf("\nPrototype : ./othello num_port\n\n");
-     
+
      exit(1);
    }
-   
-   
+
+
    /* Initialisation de GTK+ */
    gtk_init (& argc, & argv);
-   
+
    /* Creation d'un nouveau GtkBuilder */
    p_builder = gtk_builder_new();
- 
+
    if (p_builder != NULL)
    {
       /* Chargement du XML dans p_builder */
       gtk_builder_add_from_file (p_builder, "UI_Glade/Othello.glade", & p_err);
- 
+
       if (p_err == NULL)
       {
          /* Recuparation d'un pointeur sur la fenetre. */
          GtkWidget * p_win = (GtkWidget *) gtk_builder_get_object (p_builder, "window1");
 
- 
+
          /* Gestion evenement clic pour chacune des cases du damier */
          g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA1"), "button_press_event", G_CALLBACK(coup_joueur), NULL);
          g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB1"), "button_press_event", G_CALLBACK(coup_joueur), NULL);
@@ -781,34 +780,34 @@ int main (int argc, char ** argv)
          g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF8"), "button_press_event", G_CALLBACK(coup_joueur), NULL);
          g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG8"), "button_press_event", G_CALLBACK(coup_joueur), NULL);
          g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH8"), "button_press_event", G_CALLBACK(coup_joueur), NULL);
-         
+
          /* Gestion clic boutons interface */
          g_signal_connect(gtk_builder_get_object(p_builder, "button_connect"), "clicked", G_CALLBACK(clique_connect_serveur), NULL);
          g_signal_connect(gtk_builder_get_object(p_builder, "button_start"), "clicked", G_CALLBACK(clique_connect_adversaire), NULL);
-         
+
          /* Gestion clic bouton fermeture fenetre */
          g_signal_connect_swapped(G_OBJECT(p_win), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-         
-         
-         
+
+
+
          /* Recuperation numero port donne en parametre */
          port=atoi(argv[1]);
-          
+
          /* Initialisation du damier de jeu */
          for(i=0; i<8; i++)
          {
            for(j=0; j<8; j++)
            {
-             damier[i][j]=-1; 
-           }  
+             damier[i][j]=-1;
+           }
          }
 
-     
+
          /***** TO DO *****/
-         
+
          // Initialisation socket et autres objets, et création thread pour communications avec joueur adverse
-       
-	 
+
+
          gtk_widget_show_all(p_win);
          gtk_main();
       }
@@ -819,7 +818,7 @@ int main (int argc, char ** argv)
          g_error_free (p_err);
       }
    }
- 
- 
+
+
    return EXIT_SUCCESS;
 }
