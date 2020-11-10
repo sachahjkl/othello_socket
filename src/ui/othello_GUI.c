@@ -1,4 +1,5 @@
 
+#define _POSIX_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,10 +16,9 @@
 #include <signal.h>
 #include <sys/signalfd.h>
 
-#include ".othello_GUI.h"
+#include "othello_GUI.h"
 #include "../client/client.h"
 #include "../server/server.h"
-
 
 /* Fonction transforme coordonnees du damier graphique en indexes pour matrice du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
