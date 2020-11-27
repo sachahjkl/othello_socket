@@ -79,6 +79,7 @@ void reset_liste_joueurs(void);
 /* Fonction permettant d'ajouter un joueur dans la liste des joueurs sur l'interface graphique */
 void affich_joueur(char *login, char *adresse, char *port);
 
+int init_socket(void);
 
 /* Variables globales */
 int damier[8][8]; // tableau associe au damier
@@ -95,7 +96,7 @@ int addr_size;               // taille adresse
 struct sockaddr *their_addr; // structure pour stocker adresse adversaire
 
 fd_set master, read_fds, write_fds; // ensembles de socket pour toutes les sockets actives avec select
-int fdmax;                          // utilise pour select
+int fdmax = 0;                          // utilise pour select
 
 /* Variables globales associées à l'interface graphique */
 GtkBuilder *p_builder = NULL;

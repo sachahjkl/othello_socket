@@ -6,6 +6,7 @@
 
 #define BOARD_SIZE 8
 
+
 static enum colors {
     BLACK,
     WHITE,

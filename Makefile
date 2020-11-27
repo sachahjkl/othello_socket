@@ -20,7 +20,7 @@ CFLAGS = -std=c11 -Wall -Wextra -Wpedantic \
           -Wwrite-strings -Wstrict-prototypes -Wold-style-definition \
           -Wredundant-decls -Wnested-externs -Wmissing-include-dirs
 
-CLIBS = $(pkg-config --cflags --libs gtk+-3.0)
+CLIBS = $(shell pkg-config --cflags --libs gtk+-3.0)
 
 ifdef $(DEBUG)
 	CFLAGS += -g
@@ -39,34 +39,17 @@ SDIR = $(SRC)/serveur
 UIDIR = $(SRC)/ui
 RM = \rm
 
-# Other
-FIFO_EXT = fifo
 
 # Cibles
 .PHONY: clean cleanb cleano cleanfifo all
 
-all: serveur client
+all: othello
 
-# Serveur
-# serveur: serveur.o
-# 	$(CC) $(CLIBS) $(CFLAGS) -o $(BIN)/client $(OBJ)/$<
+othello: othello_GUI.o
+	$(CC) $(CLIBS) $(CFLAGS) -o $(BIN)/$@ $(OBJ)/$<
 
-# Client
-client:
-
-gui: othello_GUI.o
-	$(CC) $(CLIBS) $(CFLAGS) -o $(BIN)/ui $(OBJ)/$<
-
-
-#génération de ce qui est dans client/ et serveur/
-%.o: $(SDIR)/%.c $(SDIR)/%.h
-	$(CC) $(CFLAGS) -c $< -o $(OBJ)/$@
-
-%.o: $(CDIR)/%.c $(CDIR)/%.h
-	$(CC) $(CFLAGS) -c $< -o $(OBJ)/$@
-
-%.o: $(UIDIR)/%.c $(UIDIR)/%.h
-	$(CC) $(CFLAGS) -c $< -o $(OBJ)/$@
+%.o: $(SRC)/%.c $(SRC)/%.h
+	$(CC) $(CFLAGS) -c $< -o $(OBJ)/$@ $(CLIBS)
 
 # Cleaning
 clean: cleanb cleano cleanfifo
@@ -77,3 +60,8 @@ cleanb:
 cleano:
 	@find . -type f -name '*.o' -delete
 
+run:
+	@cd ./bin && ./othello 88888
+
+run_adv:
+	@cd ./bin && ./othello 88889

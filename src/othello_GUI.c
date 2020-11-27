@@ -1,5 +1,4 @@
-
-#define _POSIX_SOURCE
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,8 +16,6 @@
 #include <sys/signalfd.h>
 
 #include "othello_GUI.h"
-#include "../client/client.h"
-#include "../server/server.h"
 
 /* Fonction transforme coordonnees du damier graphique en indexes pour matrice du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
@@ -107,7 +104,9 @@ void indexes_to_coord(int col, int lig, char *coord)
   sprintf(coord, "%c%d\0", c, lig + 1);
 }
 
-/* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
+/* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne)
+ @param int couleur_j - 0 : Noir, tout le reste : Blanc
+*/
 void change_img_case(int col, int lig, int couleur_j)
 {
   char *coord;
@@ -118,11 +117,11 @@ void change_img_case(int col, int lig, int couleur_j)
 
   if (couleur_j)
   { // image pion blanc
-    gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_blanc.png");
+    gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "./UI_Glade/case_blanc.png");
   }
   else
   { // image pion noir
-    gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_noir.png");
+    gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "./UI_Glade/case_noir.png");
   }
 }
 
@@ -190,6 +189,9 @@ static void coup_joueur(GtkWidget *p_case)
   coord_to_indexes(gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))), &col, &lig);
 
   /***** TO DO *****/
+  /* verif_coup(col, lig) -> on doit s'assurer que le coup est correcte,
+   si oui on change la case de couleur*/
+  // change_img_case(col, lig, 0);
 }
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
@@ -271,6 +273,9 @@ void affiche_fenetre_perdu(void)
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b)
 {
+  const char *addr = lecture_addr_adversaire();
+  const char *port = lecture_port_adversaire();
+  const char *login = lecture_login();
   /***** TO DO *****/
 }
 
@@ -285,10 +290,10 @@ static void clique_connect_adversaire(GtkWidget *b)
 {
   if (newsockfd == -1)
   {
-    // Deactivation bouton demarrer partie
+    // Desactivation bouton demarrer partie
     gtk_widget_set_sensitive((GtkWidget *)gtk_builder_get_object(p_builder, "button_start"), FALSE);
 
-    // Recuperation  adresse et port adversaire au format chaines caracteres
+    // Recuperation adresse et port adversaire au format chaines caracteres
     addr_j2 = lecture_addr_adversaire();
     port_j2 = lecture_port_adversaire();
 
@@ -503,7 +508,7 @@ static void *f_com_socket(void *p_arg)
   sigemptyset(&signal_mask);
   sigaddset(&signal_mask, SIGUSR1);
 
-  if (sigprocmask(SIG_BLOCK, &signal_mask, NULL) == -1)
+  if (sigprocmask(SIG_BLOCK, &signal_mask, NULL) == EXIT_FAILURE)
   {
     printf("[Pourt joueur %d] Erreur sigprocmask\n", port);
 
@@ -512,7 +517,7 @@ static void *f_com_socket(void *p_arg)
 
   fd_signal = signalfd(-1, &signal_mask, 0);
 
-  if (fd_signal == -1)
+  if (fd_signal == EXIT_FAILURE)
   {
     printf("[port joueur %d] Erreur signalfd\n", port);
 
@@ -570,9 +575,62 @@ static void *f_com_socket(void *p_arg)
   return NULL;
 }
 
+int init_socket()
+{
+  struct addrinfo s_init, *servinfo, *p;
+  memset(&s_init, 0, sizeof(s_init));
+  s_init.ai_family = AF_INET;
+  s_init.ai_socktype = SOCK_STREAM;
+  s_init.ai_flags = AI_PASSIVE;
+
+  FD_ZERO(&master);
+  FD_ZERO(&read_fds);
+
+  if (getaddrinfo(NULL, port, &s_init, &servinfo) != 0)
+  {
+    fprintf(stderr, "Erreur getaddrinfo\n");
+    exit(1);
+  }
+  for (p = servinfo; p != NULL; p = p->ai_next)
+  {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+    {
+      perror("Serveur: socket");
+      continue;
+    }
+
+    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
+    {
+      close(sockfd);
+      perror("Serveur: erreur bind");
+      continue;
+    }
+    break;
+  }
+
+  if (p == NULL)
+  {
+    fprintf(stderr, "Serveur: echec bind\n");
+    exit(2);
+  }
+
+  freeaddrinfo(servinfo);
+
+  if (listen(sockfd, 5) == -1)
+  {
+    perror("listen");
+    exit(1);
+  }
+
+  FD_SET(sockfd, &master); // Ajout sockfd à ensemble
+
+  fdmax = sockfd;
+  return EXIT_SUCCESS;
+}
+
 int main(int argc, char **argv)
 {
-  int i, j, ret;
+  int i, j;
 
   if (argc != 2)
   {
@@ -590,7 +648,7 @@ int main(int argc, char **argv)
   if (p_builder != NULL)
   {
     /* Chargement du XML dans p_builder */
-    gtk_builder_add_from_file(p_builder, "UI_Glade/Othello.glade", &p_err);
+    gtk_builder_add_from_file(p_builder, "./UI_Glade/Othello.glade", &p_err);
 
     if (p_err == NULL)
     {
@@ -684,7 +742,16 @@ int main(int argc, char **argv)
 
       /***** TO DO *****/
 
+      gele_damier();
+
       // Initialisation socket et autres objets, et création thread pour communications avec joueur adverse
+      puts("before");
+      if (init_socket() != EXIT_SUCCESS)
+      {
+        exit(EXIT_FAILURE);
+      }
+      puts("after");
+      // --------------
 
       gtk_widget_show_all(p_win);
       gtk_main();
