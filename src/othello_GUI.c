@@ -25,7 +25,7 @@ void coord_to_indexes(const gchar *coord, int *col, int *lig)
   c = malloc(3 * sizeof(char));
 
   c = strncpy(c, coord, 1);
-  c[1] = '\0';
+  // c[1] = ' ';
 
   if (strcmp(c, "A") == 0)
   {
@@ -101,7 +101,7 @@ void indexes_to_coord(int col, int lig, char *coord)
     c = 'H';
   }
 
-  sprintf(coord, "%c%d\0", c, lig + 1);
+  sprintf(coord, "%c%d", c, lig + 1);
 }
 
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne)
@@ -126,13 +126,13 @@ void change_img_case(int col, int lig, int couleur_j)
 }
 
 /* Fonction permettant changer nom joueur blanc dans cadre Score */
-void set_label_J1(char *texte)
+void set_label_J1(const char *texte)
 {
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_J1")), texte);
 }
 
 /* Fonction permettant de changer nom joueur noir dans cadre Score */
-void set_label_J2(char *texte)
+void set_label_J2(const char *texte)
 {
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_J2")), texte);
 }
@@ -143,7 +143,7 @@ void set_score_J1(int score)
   char *s;
 
   s = malloc(5 * sizeof(char));
-  sprintf(s, "%d\0", score);
+  sprintf(s, "%d", score);
 
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_ScoreJ1")), s);
 }
@@ -164,7 +164,7 @@ void set_score_J2(int score)
   char *s;
 
   s = malloc(5 * sizeof(char));
-  sprintf(s, "%d\0", score);
+  sprintf(s, "%d", score);
 
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_ScoreJ2")), s);
 }
@@ -273,8 +273,8 @@ void affiche_fenetre_perdu(void)
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b)
 {
-  const char *addr = lecture_addr_adversaire();
-  const char *port = lecture_port_adversaire();
+  const char *addr_adv = lecture_addr_adversaire();
+  const char *port_adv = lecture_port_adversaire();
   const char *login = lecture_login();
   /***** TO DO *****/
 }
@@ -297,8 +297,8 @@ static void clique_connect_adversaire(GtkWidget *b)
     addr_j2 = lecture_addr_adversaire();
     port_j2 = lecture_port_adversaire();
 
-    printf("[Port joueur : %d] Adresse j2 lue : %s\n", port, addr_j2);
-    printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
+    printf("[Port joueur : %s] Adresse j2 lue : %s\n", port, addr_j2);
+    printf("[Port joueur : %s] Port j2 lu : %s\n", port, port_j2);
 
     pthread_kill(thr_id, SIGUSR1);
   }
@@ -481,11 +481,11 @@ void reset_liste_joueurs(void)
 }
 
 /* Fonction permettant d'ajouter un joueur dans la liste des joueurs sur l'interface graphique */
-void affich_joueur(char *login, char *adresse, char *port)
+void affich_joueur(char *login, char *adresse, char *port_j)
 {
   const gchar *joueur;
 
-  joueur = g_strconcat(login, " - ", adresse, " : ", port, "\n", NULL);
+  joueur = g_strconcat(login, " - ", adresse, " : ", port_j, "\n", NULL);
 
   gtk_text_buffer_insert_at_cursor(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), joueur, strlen(joueur));
 }
@@ -510,7 +510,7 @@ static void *f_com_socket(void *p_arg)
 
   if (sigprocmask(SIG_BLOCK, &signal_mask, NULL) == EXIT_FAILURE)
   {
-    printf("[Pourt joueur %d] Erreur sigprocmask\n", port);
+    printf("[Pourt joueur %s] Erreur sigprocmask\n", port);
 
     return 0;
   }
@@ -519,7 +519,7 @@ static void *f_com_socket(void *p_arg)
 
   if (fd_signal == EXIT_FAILURE)
   {
-    printf("[port joueur %d] Erreur signalfd\n", port);
+    printf("[port joueur %s] Erreur signalfd\n", port);
 
     return 0;
   }
@@ -542,10 +542,10 @@ static void *f_com_socket(void *p_arg)
       exit(4);
     }
 
-    printf("[Port joueur %d] Entree dans boucle for\n", port);
+    printf("[Port joueur %s] Entree dans boucle for\n", port);
     for (i = 0; i <= fdmax; i++)
     {
-      printf("[Port joueur %d] newsockfd=%d, iteration %d boucle for\n", port, newsockfd, i);
+      printf("[Port joueur %s] newsockfd=%d, iteration %d boucle for\n", port, newsockfd, i);
 
       if (FD_ISSET(i, &read_fds))
       {
@@ -575,7 +575,7 @@ static void *f_com_socket(void *p_arg)
   return NULL;
 }
 
-int init_socket()
+int init_socket(void)
 {
   struct addrinfo s_init, *servinfo, *p;
   memset(&s_init, 0, sizeof(s_init));
@@ -729,7 +729,7 @@ int main(int argc, char **argv)
       g_signal_connect_swapped(G_OBJECT(p_win), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
       /* Recuperation numero port donne en parametre */
-      port = atoi(argv[1]);
+      port = argv[1];
 
       /* Initialisation du damier de jeu */
       for (i = 0; i < 8; i++)
@@ -746,11 +746,11 @@ int main(int argc, char **argv)
 
       // Initialisation socket et autres objets, et création thread pour communications avec joueur adverse
       puts("before");
-      if (init_socket() != EXIT_SUCCESS)
-      {
-        exit(EXIT_FAILURE);
-      }
-      puts("after");
+      // if (init_socket() != EXIT_SUCCESS)
+      // {
+      //   exit(EXIT_FAILURE);
+      // }
+      // puts("after");
       // --------------
 
       gtk_widget_show_all(p_win);

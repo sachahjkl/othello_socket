@@ -5,16 +5,37 @@
 
 #define MAXDATASIZE 256
 
+// Variables globales
+int damier[8][8]; // tableau associe au damier
+int couleur;      // 0 : pour noir, 1 : pour blanc
+
+char* port; // numero port passé lors de l'appel
+
+char *addr_j2, *port_j2; // Info sur adversaire
+
+pthread_t thr_id; // Id du thread fils gerant connexion socket
+
+int sockfd, newsockfd = -1;  // descripteurs de socket
+int addr_size;               // taille adresse
+struct sockaddr *their_addr; // structure pour stocker adresse adversaire
+
+fd_set master, read_fds, write_fds; // ensembles de socket pour toutes les sockets actives avec select
+int fdmax = 0;                          // utilise pour select
+
+/* Variables globales associées à l'interface graphique */
+GtkBuilder *p_builder = NULL;
+GError *p_err = NULL;
+
 // Entetes des fonctions
 
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
 void change_img_case(int col, int lig, int couleur_j);
 
 /* Fonction permettant changer nom joueur blanc dans cadre Score */
-void set_label_J1(char *texte);
+void set_label_J1(const char *texte);
 
 /* Fonction permettant de changer nom joueur noir dans cadre Score */
-void set_label_J2(char *texte);
+void set_label_J2(const char *texte);
 
 /* Fonction permettant de changer score joueur blanc dans cadre Score */
 void set_score_J1(int score);
@@ -80,26 +101,5 @@ void reset_liste_joueurs(void);
 void affich_joueur(char *login, char *adresse, char *port);
 
 int init_socket(void);
-
-/* Variables globales */
-int damier[8][8]; // tableau associe au damier
-int couleur;      // 0 : pour noir, 1 : pour blanc
-
-int port; // numero port passé lors de l'appel
-
-char *addr_j2, *port_j2; // Info sur adversaire
-
-pthread_t thr_id; // Id du thread fils gerant connexion socket
-
-int sockfd, newsockfd = -1;  // descripteurs de socket
-int addr_size;               // taille adresse
-struct sockaddr *their_addr; // structure pour stocker adresse adversaire
-
-fd_set master, read_fds, write_fds; // ensembles de socket pour toutes les sockets actives avec select
-int fdmax = 0;                          // utilise pour select
-
-/* Variables globales associées à l'interface graphique */
-GtkBuilder *p_builder = NULL;
-GError *p_err = NULL;
 
 #endif
