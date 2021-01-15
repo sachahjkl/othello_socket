@@ -1,1 +1,0 @@
-Clic case -> appelle fonction coup_joueur

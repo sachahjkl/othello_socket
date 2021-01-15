@@ -6,33 +6,39 @@
 
 #define BOARD_SIZE 8
 
-const enum color_e { BLACK, WHITE, EMPTY };
+typedef enum color { BLACK, WHITE, EMPTY, OUT } color_e;
 
-const enum color_e FIRST_PLAYER = BLACK;  // 1 : noir ; 0 : blanc
+const color_e DEFAULT_FIRST_PLAYER = BLACK;  // 1 : noir ; 0 : blanc
 
-struct coord_s {
+typedef struct coord {
   const int x;
   const int y;
-};
+} coord_s;
 
-struct move_s {
-  const enum color_e color;
-  const struct coord_s from, to;
-};
-
-struct score_s {
+typedef struct score {
   int black;
   int white;
-} score = {0, 0};
+} score_s;
 
-enum color_e board[BOARD_SIZE][BOARD_SIZE] = {
-    {EMPTY},
-    {EMPTY},
-    {EMPTY},
-    {EMPTY, EMPTY, EMPTY, WHITE, BLACK, EMPTY, EMPTY, EMPTY},
-    {EMPTY, EMPTY, EMPTY, BLACK, WHITE, EMPTY, EMPTY, EMPTY},
-    {EMPTY},
-    {EMPTY},
-    {EMPTY}};
+typedef struct game {
+  score_s score;
+  color_e board[BOARD_SIZE][BOARD_SIZE];
+  color_e turn;
+} game_s;
+
+void init_game(game_s *game, color_e first_player);
+
+// Fonction permettant de savoir si la partie est terminée
+int is_over(game_s *game);
+
+int play_move(game_s *game, coord_s move);
+
+static int is_valid(game_s *game, coord_s move);
+
+static int is_out(coord_s move);
+
+static color_e get_color(game_s *game, coord_s coordonates);
+
+static color_e get_adversary_color(game_s *game);
 
 #endif
