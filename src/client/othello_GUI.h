@@ -3,24 +3,26 @@
 
 #include <gtk/gtk.h>
 
-#define MAXDATASIZE 256
+#define MAX_DATA_SIZE 256
+#define MAX_TITLE_LENGTH 45
 
 // Variables globales
-int damier[8][8]; // tableau associe au damier
-int couleur;      // 0 : pour noir, 1 : pour blanc
+int damier[8][8];  // tableau associe au damier
+int couleur;       // 0 : pour noir, 1 : pour blanc
 
-char* port; // numero port passé lors de l'appel
+char *port;  // numero port passé lors de l'appel
 
-char *addr_j2, *port_j2; // Info sur adversaire
+char *addr_j2, *port_j2;  // Info sur adversaire
 
-pthread_t thr_id; // Id du thread fils gerant connexion socket
+pthread_t thread_id;  // Id du thread fils gerant connexion socket
 
-int sockfd, newsockfd = -1;  // descripteurs de socket
-int addr_size;               // taille adresse
-struct sockaddr *their_addr; // structure pour stocker adresse adversaire
+int sockfd, newsockfd = -1;   // descripteurs de socket
+int addr_size;                // taille adresse
+struct sockaddr *their_addr;  // structure pour stocker adresse adversaire
 
-fd_set master, read_fds, write_fds; // ensembles de socket pour toutes les sockets actives avec select
-int fdmax = 0;                          // utilise pour select
+fd_set master;  // ensembles de socket pour toutes les
+                // sockets actives avec select
+int fdmax = 0;  // utilise pour select
 
 /* Variables globales associées à l'interface graphique */
 GtkBuilder *p_builder = NULL;
@@ -28,7 +30,8 @@ GError *p_err = NULL;
 
 // Entetes des fonctions
 
-/* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
+/* Fonction permettant de changer l'image d'une case du damier (indiqué par sa
+ * colonne et sa ligne) */
 void change_img_case(int col, int lig, int couleur_j);
 
 /* Fonction permettant changer nom joueur blanc dans cadre Score */
@@ -49,25 +52,30 @@ void set_score_J2(int score);
 /* Fonction permettant de récupérer score joueur noir dans cadre Score */
 int get_score_J2(void);
 
-/* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
+/* Fonction transformant coordonnees du damier graphique en indexes pour matrice
+ * du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig);
 
 /* Fonction appelee lors du clique sur une case du damier */
 static void coup_joueur(GtkWidget *p_case);
 
-/* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
+/* Fonction retournant texte du champs adresse du serveur de l'interface
+ * graphique */
 char *lecture_addr_serveur(void);
 
-/* Fonction retournant texte du champs port du serveur de l'interface graphique */
+/* Fonction retournant texte du champs port du serveur de l'interface graphique
+ */
 char *lecture_port_serveur(void);
 
 /* Fonction retournant texte du champs login de l'interface graphique */
 char *lecture_login(void);
 
-/* Fonction retournant texte du champs adresse du cadre Joueurs de l'interface graphique */
+/* Fonction retournant texte du champs adresse du cadre Joueurs de l'interface
+ * graphique */
 char *lecture_addr_adversaire(void);
 
-/* Fonction retournant texte du champs port du cadre Joueurs de l'interface graphique */
+/* Fonction retournant texte du champs port du cadre Joueurs de l'interface
+ * graphique */
 char *lecture_port_adversaire(void);
 
 /* Fonction affichant boite de dialogue si partie gagnee */
@@ -97,7 +105,8 @@ void init_interface_jeu(void);
 /* Fonction reinitialisant la liste des joueurs sur l'interface graphique */
 void reset_liste_joueurs(void);
 
-/* Fonction permettant d'ajouter un joueur dans la liste des joueurs sur l'interface graphique */
+/* Fonction permettant d'ajouter un joueur dans la liste des joueurs sur
+ * l'interface graphique */
 void affich_joueur(char *login, char *adresse, char *port);
 
 int init_socket(void);

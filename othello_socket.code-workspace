@@ -5,5 +5,7 @@
 		}
 	],
 	"settings": {
+		"clang-format.fallbackStyle": "Google",
+		"editor.formatOnSave": true
 	}
 }
