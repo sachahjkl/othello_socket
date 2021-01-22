@@ -12,8 +12,8 @@
 #define REQUEST_SEPARATOR '|'
 
 struct state_s {
-  enum color_e color;
-  struct coord_s coord;
+  color_e color_s;
+  coord_s coord_s;
 };
 
 #endif

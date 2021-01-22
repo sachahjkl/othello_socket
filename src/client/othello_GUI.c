@@ -701,8 +701,6 @@ static void *f_com_socket(void *p_arg) {
   return NULL;
 }
 
-int init_socket(void) {}
-
 int main(int argc, char **argv) {
   if (argc != 2) {
     printf("\nPrototype : ./othello num_port\n\n");
@@ -888,11 +886,7 @@ int main(int argc, char **argv) {
 
       // Initialisation socket et autres objets, et création thread pour
       // communications avec joueur adverse
-      puts("before");
-      if (init_socket() != EXIT_SUCCESS) {
-        exit(EXIT_FAILURE);
-      }
-      puts("after");
+
       //   --------------
 
       gtk_widget_show_all(p_win);

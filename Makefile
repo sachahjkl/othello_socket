@@ -65,8 +65,10 @@ cleanb:
 cleano:
 	@find . -type f -name '*.o' -delete
 
-run:
-	@cd ./bin && ./othello 88888
+run: all
+	@cd ./bin && ./othello 88888 &
 
-run_adv:
-	@cd ./bin && ./othello 88889
+run_adv: all
+	@cd ./bin && ./othello 88889 &
+
+run_game: run run_adv
