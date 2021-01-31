@@ -24,7 +24,7 @@ color_e board[BOARD_SIZE][BOARD_SIZE];  // damier de pions
  * @param lig la ligne de la case du damier
  * @param couleur_j la couleur du joueur (0 noir, 1 blanc)
  */
-void change_img_case(int col, int lig, color_e couleur_j);
+void change_img_case(int col, int row, color_e color);
 
 /**
  * Fonction permettant changer nom joueur blanc dans cadre Score
@@ -45,28 +45,28 @@ void set_label_J2(char *texte);
  * @param score le score du J1 (blanc)
  * @see get_score_J1(void)
  */
-void set_score_J1(int score);
+void set_score_white(int score);
 
 /**
  * Fonction permettant de récupérer score joueur blanc dans cadre Score
  * @return le score du J1 (blanc)
  * @see set_score_J1(int)
  */
-int get_score_J1(void);
+int get_score_white(void);
 
 /**
  * Fonction permettant de changer score joueur noir dans cadre Score
  * @param score le score du J2 (noir)
  * @see #get_score_J2(void)
  */
-void set_score_J2(int score);
+void set_score_black(int score);
 
 /**
  * Fonction permettant de récupérer score joueur noir dans cadre Score
  * @return le score du J2 (noir)
  * @see #set_score_J2(int)
  */
-int get_score_J2(void);
+int get_score_black(void);
 
 /**
  * Fonction transformant les coordonnees du damier graphique
@@ -84,7 +84,7 @@ void indexes_to_coord(int col, int lig, char *coord);
  * Fonction appelee lors du clic
  * sur une case du damier
  */
-static void coup_joueur(GtkWidget *p_case);
+static void on_board_click(GtkWidget *p_case);
 
 /**
  * Fonction retournant texte du champs adresse
@@ -221,7 +221,7 @@ static void *f_com_socket(void *p_arg);
  * 1/ en vérifiant qu'on ne depasse pas la taille du damier
  * 2/ que l'on joue en se basant sur son voisin
  */
-bool jouable(int col, int lig, int couleur_joueur);
+bool playable(int col, int row, color_e color);
 
 /**
  * Fonction permettant de changer la couleur de la case
@@ -231,24 +231,24 @@ void set_case(int colonne, int ligne, color_e couleur);
 /**
  * Fonction qui retourne si on doit changer la ligne
  */
-bool change_ligne(int colonne, int ligne, int dx, int dy, color_e couleur);
+bool can_change(int colonne, int ligne, int dx, int dy, color_e couleur);
 
 /**
  * Fonction changeant la couleur des cases
  * @see #changement_case(int, int, int, int, int)
  */
-void changements_case(int colonne, int ligne, int couleur);
+void changements_case(int col, int row, int p_color);
 
 /**
  * Fonction changeant la couleur des cases dans la direction choisie
  */
-void changement_case(int colonne, int ligne, int chmtx, int chmty, int couleur);
+void changement_case(int col, int row, int dx, int dy, int p_color);
 
 /**
  * Fonction permettant de savoir
  * si on peut encore placer des pièces
  */
-bool partie_finie();
+bool partie_finie(void);
 
 /**
  * Fonction permettant de savoir
@@ -256,39 +256,39 @@ bool partie_finie();
  * plus de pièces
  * @see http://www.ffothello.org/images/jeu/regles/figure-10.jpg
  */
-bool fin_prematuree();
+bool fin_prematuree(void);
 
 /**
  * Fonction permettant de savoir
  * si le joueur ne peut pas jouer
  */
-bool impossible_jouer();
+bool impossible_jouer(void);
 
 /**
  * Fonction permettant de retourner la couleur de la case
  */
-int return_couleur_case(int colonne, int ligne);
+color_e get_color(int colonne, int ligne);
 
 /**
  * Fonction retournant la couleur du joueur courant
  */
-int get_couleur();
+color_e get_player_color(void);
 
 /**
  * Fonction initialisant la couleur du joueur courant
  */
-void set_couleur(int couleur_joueur);
+void set_player_color(color_e color);
 
 /**
  * Fonction retournant la couleur de l'adversaire
  */
-int get_couleur_adversaire();
+int get_couleur_adversaire(void);
 
 /**
  *   Fonction retournant la couleur adverse
  *  @param couleur notre couleur
  *  @return couleur adverse
  */
-color_e get_couleur_adverse(color_e couleur);
+color_e get_adv_color(color_e couleur);
 
 #endif

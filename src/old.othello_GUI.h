@@ -57,7 +57,7 @@ int get_score_J2(void);
 void coord_to_indexes(const gchar *coord, int *col, int *lig);
 
 /* Fonction appelee lors du clique sur une case du damier */
-static void coup_joueur(GtkWidget *p_case);
+static void on_board_click(GtkWidget *p_case);
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface
  * graphique */

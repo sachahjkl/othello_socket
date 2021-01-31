@@ -162,7 +162,7 @@ int get_score_J2(void) {
 }
 
 /* Fonction appelee lors du clique sur une case du damier */
-static void coup_joueur(GtkWidget *p_case) {
+static void on_board_click(GtkWidget *p_case) {
   int col, lig, type_msg, nb_piece, score;
   char buf[MAX_DATA_SIZE];
 
@@ -725,133 +725,133 @@ int main(int argc, char **argv) {
 
       /* Gestion evenement clic pour chacune des cases du damier */
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH1"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH2"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH3"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH4"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH5"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH6"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH7"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
       g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH8"),
-                       "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                       "button_press_event", G_CALLBACK(on_board_click), NULL);
 
       /* Gestion clic boutons interface */
       g_signal_connect(gtk_builder_get_object(p_builder, "button_connect"),

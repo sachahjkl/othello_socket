@@ -17,8 +17,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#define MAXDATASIZE 256
-
 #define TYPE_COULEUR 0
 #define TYPE_COORD 1
 #define TYPE_IMPOSSIBILITE_COUP 2
@@ -31,9 +29,7 @@ struct requete {
   uint16_t couleur;
 };
 
-/* Variables globales */
-
-int couleur;
+int my_color;  // globale de la couleur de notre joueur
 
 int port;  // numero port passe a l'appel
 
@@ -60,7 +56,7 @@ struct addrinfo hints, *servinfo, *p;
 /* Variables globales associées à l'interface graphique */
 GtkBuilder *p_builder = NULL;
 
-void coord_to_indexes(const gchar *coord, int *col, int *lig) {
+void coord_to_indexes(const gchar *coord, int *col, int *row) {
   char *c;
   c = malloc(3 * sizeof(char));
 
@@ -84,7 +80,7 @@ void coord_to_indexes(const gchar *coord, int *col, int *lig) {
   else if (strcmp(c, "H") == 0)
     *col = 7;
 
-  *lig = atoi(coord + 1) - 1;
+  *row = atoi(coord + 1) - 1;
 }
 
 /**
@@ -114,8 +110,6 @@ void indexes_to_coord(int col, int lig, char *coord) {
   sprintf(coord, "%c%d", c, lig + 1);
 }
 
-// Fin ajout
-
 /**
  * Fonction permettant de changer l'image d'une case du board
  * (indiqué par sa colonne et sa ligne)
@@ -123,20 +117,18 @@ void indexes_to_coord(int col, int lig, char *coord) {
  * @param lig la ligne de la case du board
  * @param couleur_j la couleur du joueur (0 BLACK, 1 blanc)
  */
-void change_img_case(int col, int lig, color_e couleur_j) {
+void change_img_case(int col, int row, color_e color) {
   char *coord;
 
   coord = malloc(3 * sizeof(char));
 
   // on en a besoin pour le nom de l'élément case.
-  indexes_to_coord(col, lig, coord);
+  indexes_to_coord(col, row, coord);
 
-  if (couleur_j == WHITE) {
-    // image pion blanc
+  if (color == WHITE) {
     gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)),
                             "UI_Glade/case_blanc.png");
   } else {
-    // image pion BLACK
     gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)),
                             "UI_Glade/case_BLACK.png");
   }
@@ -165,7 +157,7 @@ void set_label_J2(char *texte) {
  * @param score le score du J1 (blanc)
  * @see #get_score_J1(void)
  */
-void set_score_J1(int score) {
+void set_score_white(int score) {
   char *s;
 
   s = malloc(5 * sizeof(char));
@@ -180,7 +172,7 @@ void set_score_J1(int score) {
  * @return le score du J1 (blanc)
  * @see #set_score_J1(int)
  */
-int get_score_J1(void) {
+int get_score_white(void) {
   const gchar *c;
 
   c = gtk_label_get_text(
@@ -194,7 +186,7 @@ int get_score_J1(void) {
  * @param score le score du J2 (BLACK)
  * @see #get_score_J2(void)
  */
-void set_score_J2(int score) {
+void set_score_black(int score) {
   char *s;
 
   s = malloc(5 * sizeof(char));
@@ -209,7 +201,7 @@ void set_score_J2(int score) {
  * @return le score du J2 (BLACK)
  * @see #set_score_J2(int)
  */
-int get_score_J2(void) {
+int get_score_black(void) {
   const gchar *c;
 
   c = gtk_label_get_text(
@@ -223,54 +215,54 @@ int get_score_J2(void) {
  * 1/ en vérifiant qu'on ne depasse pas la taille du board
  * 2/ que l'on joue en se basant sur son voisin
  */
-bool jouable(int col, int lig, int couleur_joueur) {
-  return (return_couleur_case(col, lig) == EMPTY &&
-          (change_ligne(col, lig, -1, -1, couleur_joueur) ||
-           change_ligne(col, lig, 0, -1, couleur_joueur) ||
-           change_ligne(col, lig, 1, -1, couleur_joueur) ||
-           change_ligne(col, lig, -1, 0, couleur_joueur) ||
-           change_ligne(col, lig, 1, 0, couleur_joueur) ||
-           change_ligne(col, lig, -1, 1, couleur_joueur) ||
-           change_ligne(col, lig, 0, 1, couleur_joueur) ||
-           change_ligne(col, lig, 1, 1, couleur_joueur)));
+bool playable(int col, int row, color_e color) {
+  return (get_color(col, row) == EMPTY &&
+          (can_change(col, row, -1, -1, color) ||
+           can_change(col, row, 0, -1, color) ||
+           can_change(col, row, 1, -1, color) ||
+           can_change(col, row, -1, 0, color) ||
+           can_change(col, row, 1, 0, color) ||
+           can_change(col, row, -1, 1, color) ||
+           can_change(col, row, 0, 1, color) ||
+           can_change(col, row, 1, 1, color)));
 }
 
 /**
  * Fonction permettant de changer la couleur de la case
  */
-void set_case(int colonne, int ligne, color_e couleur_joueur) {
+void set_case(int col, int row, color_e player_color) {
   // on test la couleur de la case
-  if (get_couleur_adverse(couleur_joueur) ==
-      return_couleur_case(colonne, ligne)) {
-    if (couleur_joueur == WHITE) {
-      set_score_J1(get_score_J1() + 1);
-      set_score_J2(get_score_J2() - 1);
-    } else if (couleur_joueur == BLACK) {
-      set_score_J1(get_score_J1() - 1);
-      set_score_J2(get_score_J2() + 1);
+  if (get_adv_color(player_color) == get_color(col, row)) {
+    if (player_color == WHITE) {
+      set_score_white(get_score_white() + 1);
+      set_score_black(get_score_black() - 1);
+    } else if (player_color == BLACK) {
+      set_score_white(get_score_white() - 1);
+      set_score_black(get_score_black() + 1);
     }
 
   } else {
-    if (couleur_joueur == WHITE) {
-      set_score_J1(get_score_J1() + 1);
-    } else if (couleur_joueur == BLACK) {
-      set_score_J2(get_score_J2() + 1);
+    if (player_color == WHITE) {
+      set_score_white(get_score_white() + 1);
+    } else if (player_color == BLACK) {
+      set_score_black(get_score_black() + 1);
     }
   }
   // On insere le pion de la couleur du joueur courant
-  board[colonne][ligne] = couleur_joueur;
-  printf("changement couleur de %d;%d en %d\n", colonne, ligne, couleur_joueur);
+  printf("update cell {%d;%d} from %d to %d\n", col, row, board[col][row],
+         player_color);
+  board[col][row] = player_color;
   // On change l'image de la case en transformant son numéro en img
-  change_img_case(colonne, ligne, couleur_joueur);
+  change_img_case(col, row, player_color);
 }
 
-bool change_ligne(int colonne, int ligne, int dx, int dy, color_e couleur) {
+bool can_change(int colonne, int ligne, int dx, int dy, color_e couleur) {
   int compteur = 0;
   // on fait un parcours tant que la couleur de la selection de direction est
   // différente
   colonne += dx;
   ligne += dy;
-  while (return_couleur_case(colonne, ligne) == get_couleur_adverse(couleur)) {
+  while (get_color(colonne, ligne) == get_adv_color(couleur)) {
     // on increment le compteur
     compteur++;
     // on increment le parcours vers la direction choisie
@@ -280,52 +272,52 @@ bool change_ligne(int colonne, int ligne, int dx, int dy, color_e couleur) {
   // si la couleur qu'on vient de parcourir est la même que la couleur du joueur
   // qui vient de jouer ET que le compteur est supéreur a 1(pour dire que c'est
   // pas un voisin de la meme couleur)
-  return ((return_couleur_case(colonne, ligne) == couleur) && (compteur > 0));
+  return ((get_color(colonne, ligne) == couleur) && (compteur > 0));
 }
 
 /**
  * Fonction changeant la couleur des cases
  * @see #changement_case(int, int, int, int, int)
  */
-void changements_case(int colonne, int ligne, int couleur) {
-  if (change_ligne(colonne, ligne, -1, -1, couleur)) {
-    changement_case(colonne, ligne, -1, -1, couleur);
+void changements_case(int col, int row, int color) {
+  if (can_change(col, row, -1, -1, color)) {
+    changement_case(col, row, -1, -1, color);
   }
-  if (change_ligne(colonne, ligne, 0, -1, couleur)) {
-    changement_case(colonne, ligne, 0, -1, couleur);
+  if (can_change(col, row, 0, -1, color)) {
+    changement_case(col, row, 0, -1, color);
   }
-  if (change_ligne(colonne, ligne, 1, -1, couleur)) {
-    changement_case(colonne, ligne, 1, -1, couleur);
+  if (can_change(col, row, 1, -1, color)) {
+    changement_case(col, row, 1, -1, color);
   }
-  if (change_ligne(colonne, ligne, -1, 0, couleur)) {
-    changement_case(colonne, ligne, -1, 0, couleur);
+  if (can_change(col, row, -1, 0, color)) {
+    changement_case(col, row, -1, 0, color);
   }
-  if (change_ligne(colonne, ligne, 1, 0, couleur)) {
-    changement_case(colonne, ligne, 1, 0, couleur);
+  if (can_change(col, row, 1, 0, color)) {
+    changement_case(col, row, 1, 0, color);
   }
-  if (change_ligne(colonne, ligne, -1, 1, couleur)) {
-    changement_case(colonne, ligne, -1, 1, couleur);
+  if (can_change(col, row, -1, 1, color)) {
+    changement_case(col, row, -1, 1, color);
   }
-  if (change_ligne(colonne, ligne, 0, 1, couleur)) {
-    changement_case(colonne, ligne, 0, 1, couleur);
+  if (can_change(col, row, 0, 1, color)) {
+    changement_case(col, row, 0, 1, color);
   }
-  if (change_ligne(colonne, ligne, 1, 1, couleur)) {
-    changement_case(colonne, ligne, 1, 1, couleur);
+  if (can_change(col, row, 1, 1, color)) {
+    changement_case(col, row, 1, 1, color);
   }
 }
 
 /**
  * Fonction changeant la couleur des cases dans la direction choisie
  */
-void changement_case(int colonne, int ligne, int dx, int dy, int couleur) {
-  colonne += dx;
-  ligne += dy;
-  while (return_couleur_case(colonne, ligne) == get_couleur_adverse(couleur)) {
+void changement_case(int col, int row, int dx, int dy, int player_color) {
+  col += dx;
+  row += dy;
+  while (get_color(col, row) == get_adv_color(player_color)) {
     // on change la couleur de la case et on met à jour le score
-    set_case(colonne, ligne, couleur);
+    set_case(col, row, player_color);
     // on increment le parcours vers la direction choisie
-    colonne += dx;
-    ligne += dy;
+    col += dx;
+    row += dy;
   }
 }
 
@@ -333,10 +325,10 @@ void changement_case(int colonne, int ligne, int dx, int dy, int couleur) {
  * Fonction permettant de savoir
  * si on peut encore placer des pièces
  */
-bool partie_finie() {
+bool partie_finie(void) {
   int j1, j2, limitescore;
-  j1 = get_score_J1();
-  j2 = get_score_J2();
+  j1 = get_score_white();
+  j2 = get_score_black();
   // la limite est le nb de points total pour savoir si le jeu est fini
   limitescore = BOARD_SIZE * BOARD_SIZE;
   return ((j1 + j2) == limitescore);
@@ -348,12 +340,12 @@ bool partie_finie() {
  * plus de pièces
  * @see http://www.ffothello.org/images/jeu/regles/figure-10.jpg
  */
-bool fin_prematuree() {
+bool fin_prematuree(void) {
   int i, j;
   for (i = 0; i < BOARD_SIZE; ++i) {
     for (j = 0; j < BOARD_SIZE; ++j) {
-      if ((return_couleur_case(i, j) == EMPTY) &&
-          (jouable(i, j, WHITE) || jouable(i, j, BLACK)))
+      if ((get_color(i, j) == EMPTY) &&
+          (playable(i, j, WHITE) || playable(i, j, BLACK)))
         return false;
     }
   }
@@ -364,12 +356,11 @@ bool fin_prematuree() {
  * Fonction permettant de savoir
  * si le joueur ne peut pas jouer
  */
-bool impossible_jouer() {
+bool impossible_jouer(void) {
   int i, j;
   for (i = 0; i < BOARD_SIZE; ++i) {
     for (j = 0; j < BOARD_SIZE; ++j) {
-      if ((return_couleur_case(i, j) == EMPTY) &&
-          (jouable(i, j, get_couleur())))
+      if ((get_color(i, j) == EMPTY) && (playable(i, j, get_player_color())))
         return false;
     }
   }
@@ -379,7 +370,7 @@ bool impossible_jouer() {
 /**
  * Fonction permettant de retourner la couleur de la case
  */
-int return_couleur_case(int colonne, int ligne) {
+color_e get_color(int colonne, int ligne) {
   if ((colonne < 0) || (ligne < 0) || (colonne >= BOARD_SIZE) ||
       (ligne >= BOARD_SIZE)) {
     return OUT;
@@ -391,21 +382,21 @@ int return_couleur_case(int colonne, int ligne) {
 /**
  * Fonction retournant la couleur du joueur courant
  */
-int get_couleur() { return couleur; }
+color_e get_player_color(void) { return my_color; }
 
 /**
  * Fonction initialisant la couleur du joueur courant
  */
-void set_couleur(int couleur_joueur) { couleur = couleur_joueur; }
+void set_player_color(color_e color) { my_color = color; }
 
 /**
  * Fonction retournant la couleur de l'adversaire
  */
-int get_couleur_adversaire() {
-  if (get_couleur() == WHITE) {
+int get_couleur_adversaire(void) {
+  if (get_player_color() == WHITE) {
     return BLACK;
   }
-  if (get_couleur() == BLACK) {
+  if (get_player_color() == BLACK) {
     return WHITE;
   }
   return EMPTY;
@@ -416,11 +407,11 @@ int get_couleur_adversaire() {
  * @param la couleur
  * @return la couleur adverse à @param
  */
-color_e get_couleur_adverse(color_e couleur) {
-  if (couleur == WHITE) {
+color_e get_adv_color(color_e color) {
+  if (color == WHITE) {
     return BLACK;
   }
-  if (couleur == BLACK) {
+  if (color == BLACK) {
     return WHITE;
   } else {
     return EMPTY;
@@ -431,9 +422,9 @@ color_e get_couleur_adverse(color_e couleur) {
  * Fonction appelee lors du clic
  * sur une case du board
  */
-static void coup_joueur(GtkWidget *p_case) {
-  int col, lig, type_msg, nb_piece, score;
-  char buf[MAXDATASIZE];
+static void on_board_click(GtkWidget *p_case) {
+  int col, lig;
+  char buf[MAX_DATA_SIZE];
 
   // ajout initiasation requete
   struct requete req;
@@ -461,8 +452,8 @@ static void coup_joueur(GtkWidget *p_case) {
     req.type = htons((uint16_t)TYPE_FIN);
 
     printf("Requête à envoyer %u\n", req.type);
-    bzero(buf, MAXDATASIZE);
-    snprintf(buf, MAXDATASIZE, "%u", req.type);
+    bzero(buf, MAX_DATA_SIZE);
+    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
 
     printf("Envoyer requête %s\n", buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -476,19 +467,19 @@ static void coup_joueur(GtkWidget *p_case) {
     // donc partie finie
     // les places EMPTYnt vont au gagnant
     int place_EMPTY =
-        (BOARD_SIZE * BOARD_SIZE) - (get_score_J1() + get_score_J2());
-    if (get_score_J1() > get_score_J2()) {
-      set_score_J1(get_score_J1() + place_EMPTY);
+        (BOARD_SIZE * BOARD_SIZE) - (get_score_white() + get_score_black());
+    if (get_score_white() > get_score_black()) {
+      set_score_white(get_score_white() + place_EMPTY);
     } else {
-      set_score_J2(get_score_J2() + place_EMPTY);
+      set_score_black(get_score_black() + place_EMPTY);
     }
 
     // préparation message et envoie sur socket à adversaire
     req.type = htons((uint16_t)TYPE_FIN);
 
     printf("Requête à envoyer %u\n", req.type);
-    bzero(buf, MAXDATASIZE);
-    snprintf(buf, MAXDATASIZE, "%u", req.type);
+    bzero(buf, MAX_DATA_SIZE);
+    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
 
     printf("Envoyer requête %s\n", buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -506,8 +497,8 @@ static void coup_joueur(GtkWidget *p_case) {
     req.type = htons((uint16_t)TYPE_IMPOSSIBILITE_COUP);
 
     printf("Requête à envoyer %u\n", req.type);
-    bzero(buf, MAXDATASIZE);
-    snprintf(buf, MAXDATASIZE, "%u", req.type);
+    bzero(buf, MAX_DATA_SIZE);
+    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
 
     printf("Envoyer requête %s\n", buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -517,12 +508,12 @@ static void coup_joueur(GtkWidget *p_case) {
 
     affiche_fenetre_impossible_jouer();
   } else {
-    if (jouable(col, lig, get_couleur())) {
+    if (playable(col, lig, get_player_color())) {
       // change la case
-      set_case(col, lig, get_couleur());
+      set_case(col, lig, get_player_color());
       gele_damier();
       // déterminer pions dont la couleur modifie + score
-      changements_case(col, lig, get_couleur());
+      changements_case(col, lig, get_player_color());
 
       printf("Info à envoyer : %u %u\n", col, lig);
 
@@ -531,8 +522,8 @@ static void coup_joueur(GtkWidget *p_case) {
       req.x = htons((uint16_t)col);
       req.y = htons((uint16_t)lig);
       printf("Requête à envoyer %u : %u %u\n", req.type, req.x, req.y);
-      bzero(buf, MAXDATASIZE);
-      snprintf(buf, MAXDATASIZE, "%u, %u, %u", req.type, req.x, req.y);
+      bzero(buf, MAX_DATA_SIZE);
+      snprintf(buf, MAX_DATA_SIZE, "%u, %u, %u", req.type, req.x, req.y);
 
       printf("Envoyer requête %s\n", buf);
       if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -586,14 +577,14 @@ char *lecture_port_adversaire(void) {
 }
 
 void affiche_fenetre(void) {
-  if (get_couleur() == WHITE) {
-    if (get_score_J1() > get_score_J2()) {
+  if (get_player_color() == WHITE) {
+    if (get_score_white() > get_score_black()) {
       affiche_fenetre_gagne();
     } else {
       affiche_fenetre_perdu();
     }
-  } else if (get_couleur() == BLACK) {
-    if (get_score_J2() > get_score_J1()) {
+  } else if (get_player_color() == BLACK) {
+    if (get_score_black() > get_score_white()) {
       affiche_fenetre_gagne();
     } else {
       affiche_fenetre_perdu();
@@ -973,8 +964,8 @@ void degele_damier(void) {
  */
 void init_interface_jeu(void) {
   // initialisation score à 0
-  set_score_J1(0);
-  set_score_J2(0);
+  set_score_white(0);
+  set_score_black(0);
   /**
    * Initilisation du board (D4=blanc, E4=BLACK, D5=BLACK, E5=blanc)
    * D2 blanc équivaut à {3, 1, 1}
@@ -992,7 +983,7 @@ void init_interface_jeu(void) {
   /**
    * Initialisation des scores et des joueurs
    */
-  if (get_couleur() == WHITE) {
+  if (get_player_color() == WHITE) {
     set_label_J1("Vous");
     set_label_J2("Adversaire");
   } else {  // BLACK
@@ -1052,7 +1043,7 @@ void affich_joueur(char *login, char *adresse, char *port) {
 static void *f_com_socket(void *p_arg) {
   int i, nbytes, col, lig;
 
-  char buf[MAXDATASIZE], *tmp, *p_parse;
+  char buf[MAX_DATA_SIZE], *tmp, *p_parse;
   int len, bytes_sent, t_msg_recu;
 
   sigset_t signal_mask;
@@ -1173,14 +1164,14 @@ static void *f_com_socket(void *p_arg) {
 
             // Choix de couleur à compléter
 
-            set_couleur(BLACK);
+            set_player_color(BLACK);
             req.type = htons((uint16_t)TYPE_COULEUR);
             req.couleur = htons((uint16_t)get_couleur_adversaire());
 
-            bzero(buf, MAXDATASIZE);
+            bzero(buf, MAX_DATA_SIZE);
 
             printf("Requête à envoyer %u : %u\n", req.type, req.couleur);
-            snprintf(buf, MAXDATASIZE, "%u, %u", req.type, req.couleur);
+            snprintf(buf, MAX_DATA_SIZE, "%u, %u", req.type, req.couleur);
 
             printf("Envoyer requête %s\n", buf);
             if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -1238,8 +1229,8 @@ static void *f_com_socket(void *p_arg) {
             FD_CLR(fd_signal, &master);
 
             // Réception et traitement des messages du joueur adverse
-            bzero(buf, MAXDATASIZE);
-            recv(newsockfd, buf, MAXDATASIZE, 0);
+            bzero(buf, MAX_DATA_SIZE);
+            recv(newsockfd, buf, MAX_DATA_SIZE, 0);
 
             token = strtok_r(buf, ",", &saveptr);
             sscanf(token, "%u", &(req.type));
@@ -1251,7 +1242,7 @@ static void *f_com_socket(void *p_arg) {
               sscanf(token, "%u", &(req.couleur));
               req.couleur = ntohs(req.couleur);
               printf("couleur %u\n", req.couleur);
-              set_couleur(req.couleur);
+              set_player_color(req.couleur);
             }
 
             init_interface_jeu();
@@ -1266,8 +1257,8 @@ static void *f_com_socket(void *p_arg) {
           if (i == newsockfd) {
             printf("else suite\n");
             // Réception et traitement des messages du joueur adverse
-            bzero(buf, MAXDATASIZE);
-            nbytes = recv(newsockfd, buf, MAXDATASIZE, 0);
+            bzero(buf, MAX_DATA_SIZE);
+            nbytes = recv(newsockfd, buf, MAX_DATA_SIZE, 0);
 
             printf("reception de %d octets reçus\n", nbytes);
 
@@ -1326,133 +1317,133 @@ bool init_gtk(char *title) {
   /* DÉBUT Gestion événement clic pour chacune des cases du board */
   {
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH1"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH2"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH3"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH4"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH5"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH6"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH7"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH8"),
-                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+                     "button_press_event", G_CALLBACK(on_board_click), NULL);
     /* FIN Gestion événement clic pour chacune des cases du board */
 
     /* Gestion clic boutons interface */
@@ -1516,13 +1507,12 @@ int main(int argc, char **argv) {
 
   /* Initialisation de GTK+ */
   gtk_init(&argc, &argv);
-  char title[80];
   char title[MAX_TITLE_LENGTH] = "Jeu du Othello";
   strncat(title, " - ", MAX_TITLE_LENGTH - strlen(title));
   strncat(title, port, MAX_TITLE_LENGTH - strlen(title));
-
+  puts("test");
   // On initialise les éléménets relatifs à GTK
-  if (!init_gtk(title)) {
+  if (!init_gtk(&title)) {
     exit(1);
   }
 
