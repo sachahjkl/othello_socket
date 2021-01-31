@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "othello_GUI.h"
+#include "old.othello_GUI.h"
 
 #include <inttypes.h>
 #include <netdb.h>

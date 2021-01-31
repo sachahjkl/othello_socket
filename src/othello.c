@@ -1,7 +1,7 @@
 
-// Ajout
 #define _GNU_SOURCE
-#include <gtk/gtk.h>
+#include "othello.h"
+
 #include <inttypes.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -17,22 +17,12 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-// ajout de la librairie pour utilisation de boolean
-#include <stdbool.h>
-
 #define MAXDATASIZE 256
-
-#define TAILLE_DAMIER 8  // 8 lignes, 8 colonnes
-#define EN_DEHORS_TAB -2
-#define VIDE -1
-#define NOIR 0
-#define BLANC 1
 
 #define TYPE_COULEUR 0
 #define TYPE_COORD 1
 #define TYPE_IMPOSSIBILITE_COUP 2
 #define TYPE_FIN 3
-// Fin ajout
 
 struct requete {
   uint16_t type;  // 0 pour la couleur, 1 pour les coordonnées x, y
@@ -42,7 +32,7 @@ struct requete {
 };
 
 /* Variables globales */
-int damier[TAILLE_DAMIER][TAILLE_DAMIER];  // tableau associe au damier
+
 int couleur;
 
 int port;  // numero port passe a l'appel
@@ -69,296 +59,13 @@ struct addrinfo hints, *servinfo, *p;
 
 /* Variables globales associées à l'interface graphique */
 GtkBuilder *p_builder = NULL;
-GError *p_err = NULL;
 
-/** DEBUT DES ENTÊTES DES FONCTIONS **/
-
-/**
- * Fonction permettant de changer l'image d'une case du damier
- * (indiqué par sa colonne et sa ligne)
- * @param col la colonne de la case du damier
- * @param lig la ligne de la case du damier
- * @param couleur_j la couleur du joueur (0 noir, 1 blanc)
- */
-void change_img_case(int col, int lig, int couleur_j);
-
-/**
- * Fonction permettant changer nom joueur blanc dans cadre Score
- * @param texte nom du J1 (blanc)
- * @usefulfor interface graphique
- */
-void set_label_J1(char *texte);
-
-/**
- * Fonction permettant changer nom joueur noir dans cadre Score
- * @param texte nom du J2 (noir)
- * @usefulfor interface graphique
- */
-void set_label_J2(char *texte);
-
-/**
- * Fonction permettant de changer score joueur blanc dans cadre Score
- * @param score le score du J1 (blanc)
- * @see get_score_J1(void)
- */
-void set_score_J1(int score);
-
-/**
- * Fonction permettant de récupérer score joueur blanc dans cadre Score
- * @return le score du J1 (blanc)
- * @see set_score_J1(int)
- */
-int get_score_J1(void);
-
-/**
- * Fonction permettant de changer score joueur noir dans cadre Score
- * @param score le score du J2 (noir)
- * @see #get_score_J2(void)
- */
-void set_score_J2(int score);
-
-/**
- * Fonction permettant de récupérer score joueur noir dans cadre Score
- * @return le score du J2 (noir)
- * @see #set_score_J2(int)
- */
-int get_score_J2(void);
-
-/**
- * Fonction transformant les coordonnees du damier graphique
- * en indexes pour matrice du damier
- */
-void coord_to_indexes(const gchar *coord, int *col, int *lig);
-
-/**
- * Fonction transformant les indexes pour matrice
- * du damier en coordonnees du damier graphique
- */
-void indexes_to_coord(int col, int lig, char *coord);
-
-/**
- * Fonction appelee lors du clic
- * sur une case du damier
- */
-static void coup_joueur(GtkWidget *p_case);
-
-/**
- * Fonction retournant texte du champs adresse
- * du serveur de l'interface graphique
- * @return l'adresse du serveur
- */
-char *lecture_addr_serveur(void);
-
-/**
- * Fonction retournant le texte du champs port
- * du serveur de l'interface graphique
- * @return le port du serveur
- */
-char *lecture_port_serveur(void);
-
-/**
- * Fonction retournant le texte du champs login
- * de l'interface graphique
- * @return le login
- */
-char *lecture_login(void);
-
-/**
- * Fonction retournant le texte du champs adresse
- * du cadre Joueurs de l'interface graphique
- * @return l'adresse de l'adversaire
- */
-char *lecture_addr_adversaire(void);
-
-/**
- * Fonction retournant le texte du champs port
- * du cadre Joueurs de l'interface graphique
- * @return le port de l'adversaire
- */
-char *lecture_port_adversaire(void);
-
-/**
- * Fonction permettant d'afficher
- * soit #affiche_fenetre_gagne(void)
- * soit #affiche_fenetre_perdu(void)
- * en fonction des cas et en fonction
- * de la couleur qui jouer
- */
-void affiche_fenetre(void);
-
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est gagnée
- * @usefulfor interface graphique
- */
-void affiche_fenetre_gagne(void);
-
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est perdue
- * @usefulfor interface graphique
- */
-void affiche_fenetre_perdu(void);
-
-/**
- * Fonction affichant une boite de dialogue
- * si le joueur ne peut pas jouer
- * @usefulfor interface graphique
- */
-void affiche_fenetre_impossible_jouer(void);
-
-/**
- * Fonction appelée lors du clic du bouton Se connecter
- * @usefulfor interface graphique
- */
-static void clique_connect_serveur(GtkWidget *b);
-
-/**
- * Fonction desactivant bouton demarrer partie
- * @usefulfor interface graphique
- */
-void disable_button_start(void);
-
-/**
- * Fonction appelee lors du clic du bouton Demarrer partie
- * @usefulfor interface graphique
- */
-static void clique_connect_adversaire(GtkWidget *b);
-
-/**
- * Fonction desactivant les cases du damier
- * pour attendre que l'utilisateur adverse joue (ignore les clics du joueurs
- * courant)
- * @usefulfor interface graphique
- * @see #degele_damier(void)
- */
-void gele_damier(void);
-
-/**
- * Fonction activant les cases du damier
- * pour que l'utilisateur puisse jouer
- * @usefulfor interface graphique
- * @see #gele_damier(void)
- */
-void degele_damier(void);
-
-/**
- * Fonction permettant d'initialiser le plateau de jeu
- * @usefulfor interface graphique
- */
-void init_interface_jeu(void);
-
-/**
- * Fonction reinitialisant la liste des joueurs sur l'interface graphique
- * @usefulfor interface graphique
- */
-void reset_liste_joueurs(void);
-
-/**
- * Fonction permettant d'ajouter un joueur
- * dans la liste des joueurs sur l'interface graphique
- * @param login le login du joueur
- * @param adresse l'adresse ip du joueur
- * @param port le port du joueur
- * @usefulfor interface graphique
- */
-void affich_joueur(char *login, char *adresse, char *port);
-
-/**
- * Fonction exécutée par le thread gérant
- * les communications à travers la socket
- */
-static void *f_com_socket(void *p_arg);
-
-// ajout des entetes qui ne sont pas du prof
-
-/**
- * Fonction vérifiant si une case est jouable
- * 1/ en vérifiant qu'on ne depasse pas la taille du damier
- * 2/ que l'on joue en se basant sur son voisin
- */
-bool jouable(int col, int lig, int couleur_joueur);
-
-/**
- * Fonction permettant de changer la couleur de la case
- */
-int set_case(int colonne, int ligne, int couleur);
-
-/**
- * Fonction qui retourne si on doit changer la ligne
- */
-bool change_ligne(int colonne, int ligne, int chmtx, int chmty, int couleur);
-
-/**
- * Fonction changeant la couleur des cases
- * @see #changement_case(int, int, int, int, int)
- */
-void changements_case(int colonne, int ligne, int couleur);
-
-/**
- * Fonction changeant la couleur des cases dans la direction choisie
- */
-void changement_case(int colonne, int ligne, int chmtx, int chmty, int couleur);
-
-/**
- * Fonction permettant de savoir
- * si on peut encore placer des pièces
- */
-bool partie_finie();
-
-/**
- * Fonction permettant de savoir
- * si les deux joueurs ne peuvent poser
- * plus de pièces
- * @see http://www.ffothello.org/images/jeu/regles/figure-10.jpg
- */
-bool fin_prematuree();
-
-/**
- * Fonction permettant de savoir
- * si le joueur ne peut pas jouer
- */
-bool impossible_jouer();
-
-/**
- * Fonction permettant de retourner la couleur de la case
- */
-int return_couleur_case(int colonne, int ligne);
-
-/**
- * Fonction retournant la couleur du joueur courant
- */
-int get_couleur();
-
-/**
- * Fonction initialisant la couleur du joueur courant
- */
-void set_couleur(int couleur_joueur);
-
-/**
- * Fonction retournant la couleur de l'adversaire
- */
-int get_couleur_adversaire();
-
-/**
- * Fonction retournant la couleur adverse
- * @param la couleur
- * @return la couleur adverse à @param
- */
-int get_couleur_adverse(int couleur);
-
-/** FIN DES ENTÊTES DES FONCTIONS **/
-
-/**
- * Fonction transformant les coordonnees du damier graphique
- * en indexes pour matrice du damier
- */
 void coord_to_indexes(const gchar *coord, int *col, int *lig) {
   char *c;
   c = malloc(3 * sizeof(char));
 
   c = strncpy(c, coord, 1);
-  c[1] = '\0';
+  // c[1] = '\0';
 
   if (strcmp(c, "A") == 0)
     *col = 0;
@@ -382,7 +89,7 @@ void coord_to_indexes(const gchar *coord, int *col, int *lig) {
 
 /**
  * Fonction transformant les indexes pour matrice
- * du damier en coordonnees du damier graphique
+ * du board en coordonnees du board graphique
  */
 void indexes_to_coord(int col, int lig, char *coord) {
   char c;
@@ -404,40 +111,40 @@ void indexes_to_coord(int col, int lig, char *coord) {
   else if (col == 7)
     c = 'H';
 
-  sprintf(coord, "%c%d\0", c, lig + 1);
+  sprintf(coord, "%c%d", c, lig + 1);
 }
 
 // Fin ajout
 
 /**
- * Fonction permettant de changer l'image d'une case du damier
+ * Fonction permettant de changer l'image d'une case du board
  * (indiqué par sa colonne et sa ligne)
- * @param col la colonne de la case du damier
- * @param lig la ligne de la case du damier
- * @param couleur_j la couleur du joueur (0 noir, 1 blanc)
+ * @param col la colonne de la case du board
+ * @param lig la ligne de la case du board
+ * @param couleur_j la couleur du joueur (0 BLACK, 1 blanc)
  */
-void change_img_case(int col, int lig, int couleur_j) {
+void change_img_case(int col, int lig, color_e couleur_j) {
   char *coord;
 
   coord = malloc(3 * sizeof(char));
 
+  // on en a besoin pour le nom de l'élément case.
   indexes_to_coord(col, lig, coord);
 
-  if (couleur_j == BLANC) {
+  if (couleur_j == WHITE) {
     // image pion blanc
     gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)),
                             "UI_Glade/case_blanc.png");
   } else {
-    // image pion noir
+    // image pion BLACK
     gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)),
-                            "UI_Glade/case_noir.png");
+                            "UI_Glade/case_BLACK.png");
   }
 }
 
 /**
  * Fonction permettant changer nom joueur blanc dans cadre Score
  * @param texte nom du J1 (blanc)
- * @usefulfor interface graphique
  */
 void set_label_J1(char *texte) {
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_J1")),
@@ -445,9 +152,8 @@ void set_label_J1(char *texte) {
 }
 
 /**
- * Fonction permettant changer nom joueur noir dans cadre Score
- * @param texte nom du J2 (noir)
- * @usefulfor interface graphique
+ * Fonction permettant changer nom joueur BLACK dans cadre Score
+ * @param texte nom du J2 (BLACK)
  */
 void set_label_J2(char *texte) {
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_J2")),
@@ -463,7 +169,7 @@ void set_score_J1(int score) {
   char *s;
 
   s = malloc(5 * sizeof(char));
-  sprintf(s, "%d\0", score);
+  sprintf(s, "%d", score);
 
   gtk_label_set_text(
       GTK_LABEL(gtk_builder_get_object(p_builder, "label_ScoreJ1")), s);
@@ -484,23 +190,23 @@ int get_score_J1(void) {
 }
 
 /**
- * Fonction permettant de changer score joueur noir dans cadre Score
- * @param score le score du J2 (noir)
+ * Fonction permettant de changer score joueur BLACK dans cadre Score
+ * @param score le score du J2 (BLACK)
  * @see #get_score_J2(void)
  */
 void set_score_J2(int score) {
   char *s;
 
   s = malloc(5 * sizeof(char));
-  sprintf(s, "%d\0", score);
+  sprintf(s, "%d", score);
 
   gtk_label_set_text(
       GTK_LABEL(gtk_builder_get_object(p_builder, "label_ScoreJ2")), s);
 }
 
 /**
- * Fonction permettant de récupérer score joueur noir dans cadre Score
- * @return le score du J2 (noir)
+ * Fonction permettant de récupérer score joueur BLACK dans cadre Score
+ * @return le score du J2 (BLACK)
  * @see #set_score_J2(int)
  */
 int get_score_J2(void) {
@@ -514,11 +220,11 @@ int get_score_J2(void) {
 
 /**
  * Fonction vérifiant si une case est jouable
- * 1/ en vérifiant qu'on ne depasse pas la taille du damier
+ * 1/ en vérifiant qu'on ne depasse pas la taille du board
  * 2/ que l'on joue en se basant sur son voisin
  */
 bool jouable(int col, int lig, int couleur_joueur) {
-  return (return_couleur_case(col, lig) == VIDE &&
+  return (return_couleur_case(col, lig) == EMPTY &&
           (change_ligne(col, lig, -1, -1, couleur_joueur) ||
            change_ligne(col, lig, 0, -1, couleur_joueur) ||
            change_ligne(col, lig, 1, -1, couleur_joueur) ||
@@ -532,44 +238,44 @@ bool jouable(int col, int lig, int couleur_joueur) {
 /**
  * Fonction permettant de changer la couleur de la case
  */
-int set_case(int colonne, int ligne, int couleur_joueur) {
+void set_case(int colonne, int ligne, color_e couleur_joueur) {
   // on test la couleur de la case
   if (get_couleur_adverse(couleur_joueur) ==
       return_couleur_case(colonne, ligne)) {
-    if (couleur_joueur == BLANC) {
+    if (couleur_joueur == WHITE) {
       set_score_J1(get_score_J1() + 1);
       set_score_J2(get_score_J2() - 1);
-    } else if (couleur_joueur == NOIR) {
+    } else if (couleur_joueur == BLACK) {
       set_score_J1(get_score_J1() - 1);
       set_score_J2(get_score_J2() + 1);
     }
 
   } else {
-    if (couleur_joueur == BLANC) {
+    if (couleur_joueur == WHITE) {
       set_score_J1(get_score_J1() + 1);
-    } else if (couleur_joueur == NOIR) {
+    } else if (couleur_joueur == BLACK) {
       set_score_J2(get_score_J2() + 1);
     }
   }
   // On insere le pion de la couleur du joueur courant
-  damier[colonne][ligne] = couleur_joueur;
+  board[colonne][ligne] = couleur_joueur;
   printf("changement couleur de %d;%d en %d\n", colonne, ligne, couleur_joueur);
   // On change l'image de la case en transformant son numéro en img
   change_img_case(colonne, ligne, couleur_joueur);
 }
 
-bool change_ligne(int colonne, int ligne, int chmtx, int chmty, int couleur) {
+bool change_ligne(int colonne, int ligne, int dx, int dy, color_e couleur) {
   int compteur = 0;
   // on fait un parcours tant que la couleur de la selection de direction est
   // différente
-  colonne += chmtx;
-  ligne += chmty;
+  colonne += dx;
+  ligne += dy;
   while (return_couleur_case(colonne, ligne) == get_couleur_adverse(couleur)) {
     // on increment le compteur
     compteur++;
     // on increment le parcours vers la direction choisie
-    colonne += chmtx;
-    ligne += chmty;
+    colonne += dx;
+    ligne += dy;
   }
   // si la couleur qu'on vient de parcourir est la même que la couleur du joueur
   // qui vient de jouer ET que le compteur est supéreur a 1(pour dire que c'est
@@ -611,16 +317,15 @@ void changements_case(int colonne, int ligne, int couleur) {
 /**
  * Fonction changeant la couleur des cases dans la direction choisie
  */
-void changement_case(int colonne, int ligne, int chmtx, int chmty,
-                     int couleur) {
-  colonne += chmtx;
-  ligne += chmty;
+void changement_case(int colonne, int ligne, int dx, int dy, int couleur) {
+  colonne += dx;
+  ligne += dy;
   while (return_couleur_case(colonne, ligne) == get_couleur_adverse(couleur)) {
     // on change la couleur de la case et on met à jour le score
     set_case(colonne, ligne, couleur);
     // on increment le parcours vers la direction choisie
-    colonne += chmtx;
-    ligne += chmty;
+    colonne += dx;
+    ligne += dy;
   }
 }
 
@@ -633,7 +338,7 @@ bool partie_finie() {
   j1 = get_score_J1();
   j2 = get_score_J2();
   // la limite est le nb de points total pour savoir si le jeu est fini
-  limitescore = TAILLE_DAMIER * TAILLE_DAMIER;
+  limitescore = BOARD_SIZE * BOARD_SIZE;
   return ((j1 + j2) == limitescore);
 }
 
@@ -645,10 +350,10 @@ bool partie_finie() {
  */
 bool fin_prematuree() {
   int i, j;
-  for (i = 0; i < TAILLE_DAMIER; ++i) {
-    for (j = 0; j < TAILLE_DAMIER; ++j) {
-      if ((return_couleur_case(i, j) == VIDE) &&
-          (jouable(i, j, BLANC) || jouable(i, j, NOIR)))
+  for (i = 0; i < BOARD_SIZE; ++i) {
+    for (j = 0; j < BOARD_SIZE; ++j) {
+      if ((return_couleur_case(i, j) == EMPTY) &&
+          (jouable(i, j, WHITE) || jouable(i, j, BLACK)))
         return false;
     }
   }
@@ -661,9 +366,10 @@ bool fin_prematuree() {
  */
 bool impossible_jouer() {
   int i, j;
-  for (i = 0; i < TAILLE_DAMIER; ++i) {
-    for (j = 0; j < TAILLE_DAMIER; ++j) {
-      if ((return_couleur_case(i, j) == VIDE) && (jouable(i, j, get_couleur())))
+  for (i = 0; i < BOARD_SIZE; ++i) {
+    for (j = 0; j < BOARD_SIZE; ++j) {
+      if ((return_couleur_case(i, j) == EMPTY) &&
+          (jouable(i, j, get_couleur())))
         return false;
     }
   }
@@ -674,11 +380,11 @@ bool impossible_jouer() {
  * Fonction permettant de retourner la couleur de la case
  */
 int return_couleur_case(int colonne, int ligne) {
-  if ((colonne < 0) || (ligne < 0) || (colonne >= TAILLE_DAMIER) ||
-      (ligne >= TAILLE_DAMIER)) {
-    return EN_DEHORS_TAB;
+  if ((colonne < 0) || (ligne < 0) || (colonne >= BOARD_SIZE) ||
+      (ligne >= BOARD_SIZE)) {
+    return OUT;
   } else {
-    return (damier[colonne][ligne]);
+    return (board[colonne][ligne]);
   }
 }
 
@@ -696,31 +402,34 @@ void set_couleur(int couleur_joueur) { couleur = couleur_joueur; }
  * Fonction retournant la couleur de l'adversaire
  */
 int get_couleur_adversaire() {
-  if (get_couleur() == BLANC) {
-    return NOIR;
+  if (get_couleur() == WHITE) {
+    return BLACK;
   }
-  if (get_couleur() == NOIR) {
-    return BLANC;
+  if (get_couleur() == BLACK) {
+    return WHITE;
   }
+  return EMPTY;
 }
 
 /**
- * Fonction retournant la couleur adverse
+ * Fonction retournant la couleur adverget_couleurse
  * @param la couleur
  * @return la couleur adverse à @param
  */
-int get_couleur_adverse(int couleur) {
-  if (couleur == BLANC) {
-    return NOIR;
+color_e get_couleur_adverse(color_e couleur) {
+  if (couleur == WHITE) {
+    return BLACK;
   }
-  if (couleur == NOIR) {
-    return BLANC;
+  if (couleur == BLACK) {
+    return WHITE;
+  } else {
+    return EMPTY;
   }
 }
 
 /**
  * Fonction appelee lors du clic
- * sur une case du damier
+ * sur une case du board
  */
 static void coup_joueur(GtkWidget *p_case) {
   int col, lig, type_msg, nb_piece, score;
@@ -729,7 +438,7 @@ static void coup_joueur(GtkWidget *p_case) {
   // ajout initiasation requete
   struct requete req;
 
-  // Traduction coordonnees damier en indexes matrice damier
+  // Traduction coordonnees board en indexes matrice board
   coord_to_indexes(
       gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))),
       &col, &lig);
@@ -765,13 +474,13 @@ static void coup_joueur(GtkWidget *p_case) {
   } else if (fin_prematuree()) {
     // les deux joueurs ne peuvent pas placer le pion
     // donc partie finie
-    // les places vident vont au gagnant
-    int place_vide =
-        (TAILLE_DAMIER * TAILLE_DAMIER) - (get_score_J1() + get_score_J2());
+    // les places EMPTYnt vont au gagnant
+    int place_EMPTY =
+        (BOARD_SIZE * BOARD_SIZE) - (get_score_J1() + get_score_J2());
     if (get_score_J1() > get_score_J2()) {
-      set_score_J1(get_score_J1() + place_vide);
+      set_score_J1(get_score_J1() + place_EMPTY);
     } else {
-      set_score_J2(get_score_J2() + place_vide);
+      set_score_J2(get_score_J2() + place_EMPTY);
     }
 
     // préparation message et envoie sur socket à adversaire
@@ -834,11 +543,6 @@ static void coup_joueur(GtkWidget *p_case) {
   }
 }
 
-/**
- * Fonction retournant texte du champs adresse
- * du serveur de l'interface graphique
- * @return l'adresse du serveur
- */
 char *lecture_addr_serveur(void) {
   GtkWidget *entry_addr_srv;
 
@@ -847,11 +551,6 @@ char *lecture_addr_serveur(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_srv));
 }
 
-/**
- * Fonction retournant le texte du champs port
- * du serveur de l'interface graphique
- * @return le port du serveur
- */
 char *lecture_port_serveur(void) {
   GtkWidget *entry_port_srv;
 
@@ -860,11 +559,6 @@ char *lecture_port_serveur(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_srv));
 }
 
-/**
- * Fonction retournant le texte du champs login
- * de l'interface graphique
- * @return le login
- */
 char *lecture_login(void) {
   GtkWidget *entry_login;
 
@@ -873,11 +567,6 @@ char *lecture_login(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_login));
 }
 
-/**
- * Fonction retournant le texte du champs adresse
- * du cadre Joueurs de l'interface graphique
- * @return l'adresse de l'adversaire
- */
 char *lecture_addr_adversaire(void) {
   GtkWidget *entry_addr_j2;
 
@@ -887,11 +576,6 @@ char *lecture_addr_adversaire(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_j2));
 }
 
-/**
- * Fonction retournant le texte du champs port
- * du cadre Joueurs de l'interface graphique
- * @return le port de l'adversaire
- */
 char *lecture_port_adversaire(void) {
   GtkWidget *entry_port_j2;
 
@@ -901,21 +585,14 @@ char *lecture_port_adversaire(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_j2));
 }
 
-/**
- * Fonction permettant d'afficher
- * soit #affiche_fenetre_gagne(void)
- * soit #affiche_fenetre_perdu(void)
- * en fonction des cas et en fonction
- * de la couleur qui jouer
- */
 void affiche_fenetre(void) {
-  if (get_couleur() == BLANC) {
+  if (get_couleur() == WHITE) {
     if (get_score_J1() > get_score_J2()) {
       affiche_fenetre_gagne();
     } else {
       affiche_fenetre_perdu();
     }
-  } else if (get_couleur() == NOIR) {
+  } else if (get_couleur() == BLACK) {
     if (get_score_J2() > get_score_J1()) {
       affiche_fenetre_gagne();
     } else {
@@ -924,11 +601,6 @@ void affiche_fenetre(void) {
   }
 }
 
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est gagnée
- * @usefulfor interface graphique
- */
 void affiche_fenetre_gagne(void) {
   GtkWidget *dialog;
 
@@ -947,7 +619,6 @@ void affiche_fenetre_gagne(void) {
 /**
  * Fonction affichant une boite de dialogue
  * si la partie est perdue
- * @usefulfor interface graphique
  */
 void affiche_fenetre_perdu(void) {
   GtkWidget *dialog;
@@ -967,7 +638,6 @@ void affiche_fenetre_perdu(void) {
 /**
  * Fonction affichant une boite de dialogue
  * si le joueur ne peut pas jouer
- * @usefulfor interface graphique
  */
 void affiche_fenetre_impossible_jouer(void) {
   GtkWidget *dialog;
@@ -985,7 +655,6 @@ void affiche_fenetre_impossible_jouer(void) {
 
 /**
  * Fonction appelée lors du clic du bouton Se connecter
- * @usefulfor interface graphique
  */
 static void clique_connect_serveur(GtkWidget *b) {
   /*
@@ -995,7 +664,6 @@ static void clique_connect_serveur(GtkWidget *b) {
 
 /**
  * Fonction desactivant bouton demarrer partie
- * @usefulfor interface graphique
  */
 void disable_button_start(void) {
   gtk_widget_set_sensitive(
@@ -1006,7 +674,6 @@ void disable_button_start(void) {
 
 /**
  * Fonction appelee lors du clic du bouton Demarrer partie
- * @usefulfor interface graphique
  */
 static void clique_connect_adversaire(GtkWidget *b) {
   if (newsockfd == -1) {
@@ -1029,10 +696,9 @@ static void clique_connect_adversaire(GtkWidget *b) {
 // Fin ajout
 
 /**
- * Fonction desactivant les cases du damier
+ * Fonction desactivant les cases du board
  * pour attendre que l'utilisateur adverse joue (ignore les clics du joueurs
  * courant)
- * @usefulfor interface graphique
  * @see #degele_damier(void)
  */
 void gele_damier(void) {
@@ -1167,9 +833,8 @@ void gele_damier(void) {
 }
 
 /**
- * Fonction activant les cases du damier
+ * Fonction activant les cases du board
  * pour que l'utilisateur puisse jouer
- * @usefulfor interface graphique
  * @see #gele_damier(void)
  */
 void degele_damier(void) {
@@ -1305,33 +970,32 @@ void degele_damier(void) {
 
 /**
  * Fonction permettant d'initialiser le plateau de jeu
- * @usefulfor interface graphique
  */
 void init_interface_jeu(void) {
   // initialisation score à 0
   set_score_J1(0);
   set_score_J2(0);
   /**
-   * Initilisation du damier (D4=blanc, E4=noir, D5=noir, E5=blanc)
+   * Initilisation du board (D4=blanc, E4=BLACK, D5=BLACK, E5=blanc)
    * D2 blanc équivaut à {3, 1, 1}
    * (car D, 4e lettre, donc => 3)
    * (4, 4e chiffre, donc => 1)
    */
-  set_case(3, 3, BLANC);
+  set_case(3, 3, WHITE);
 
-  set_case(4, 3, NOIR);
+  set_case(4, 3, BLACK);
 
-  set_case(3, 4, NOIR);
+  set_case(3, 4, BLACK);
 
-  set_case(4, 4, BLANC);
+  set_case(4, 4, WHITE);
 
   /**
    * Initialisation des scores et des joueurs
    */
-  if (get_couleur() == BLANC) {
+  if (get_couleur() == WHITE) {
     set_label_J1("Vous");
     set_label_J2("Adversaire");
-  } else {  // noir
+  } else {  // BLACK
     set_label_J1("Adversaire");
     set_label_J2("Vous");
   }
@@ -1343,7 +1007,6 @@ void init_interface_jeu(void) {
 
 /**
  * Fonction reinitialisant la liste des joueurs sur l'interface graphique
- * @usefulfor interface graphique
  */
 void reset_liste_joueurs(void) {
   GtkTextIter start, end;
@@ -1369,7 +1032,6 @@ void reset_liste_joueurs(void) {
  * @param login le login du joueur
  * @param adresse l'adresse ip du joueur
  * @param port le port du joueur
- * @usefulfor interface graphique
  */
 void affich_joueur(char *login, char *adresse, char *port) {
   const gchar *joueur;
@@ -1488,7 +1150,6 @@ static void *f_com_socket(void *p_arg) {
             }
             if (p == NULL) {
               fprintf(stderr, "server : failed to bind\n");
-              return 2;
             }
 
             freeaddrinfo(servinfo);  // libère la structure
@@ -1512,7 +1173,7 @@ static void *f_com_socket(void *p_arg) {
 
             // Choix de couleur à compléter
 
-            set_couleur(NOIR);
+            set_couleur(BLACK);
             req.type = htons((uint16_t)TYPE_COULEUR);
             req.couleur = htons((uint16_t)get_couleur_adversaire());
 
@@ -1644,9 +1305,207 @@ static void *f_com_socket(void *p_arg) {
   return (NULL);
 }
 
-// Fin ajout
+bool init_gtk(char *title) {
+  p_builder = gtk_builder_new();
+  GError *p_err = NULL;
+  if (p_builder == NULL) {
+    return false;
+  }
+  gtk_builder_add_from_file(p_builder, "UI_Glade/Othello.glade", &p_err);
+  if (p_err != NULL) {
+    g_error("%s", p_err->message);
+    g_error_free(p_err);
+    return false;
+  }
+  /* Récupération d'un pointeur sur la fenêtre. */
+  p_win = (GtkWidget *)gtk_builder_get_object(p_builder, "window1");
 
-/** INT MAIN */
+  /* En plus, ajout du port dans le titre */
+  gtk_window_set_title(GTK_WINDOW(p_win), title);
+
+  /* DÉBUT Gestion événement clic pour chacune des cases du board */
+  {
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH1"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH2"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH3"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH4"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH5"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH6"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH7"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH8"),
+                     "button_press_event", G_CALLBACK(coup_joueur), NULL);
+    /* FIN Gestion événement clic pour chacune des cases du board */
+
+    /* Gestion clic boutons interface */
+    g_signal_connect(gtk_builder_get_object(p_builder, "button_connect"),
+                     "clicked", G_CALLBACK(clique_connect_serveur), NULL);
+    g_signal_connect(gtk_builder_get_object(p_builder, "button_start"),
+                     "clicked", G_CALLBACK(clique_connect_adversaire), NULL);
+
+    /* Gestion clic bouton fermeture fenêtre */
+    g_signal_connect_swapped(G_OBJECT(p_win), "destroy",
+                             G_CALLBACK(gtk_main_quit), NULL);
+  }
+  return true;
+}
+
+bool init_socket(int port) {
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+  status = getaddrinfo(NULL, port, &hints, &servinfo);
+  if (status != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+    return 1;
+  }
+  for (p = servinfo; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+      perror("server: socket");
+      continue;
+    }
+    // bind de notre socket serveur
+    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(sockfd);
+      perror("server: bind");
+      continue;
+    }
+    printf("[Port joueur : %d] Ok socket correct\n", port);
+    break;
+  }
+  if (p == NULL) {
+    fprintf(stderr, "server: failed to bind\n");
+    exit(2);
+  }
+
+  freeaddrinfo(servinfo);  // Libère structure
+  listen(sockfd, 1);
+  FD_ZERO(&master);
+  FD_ZERO(&read_fds);
+  FD_SET(sockfd, &master);
+  read_fds = master;  // copie des ensembles
+  fdmax = sockfd;
+}
+
 int main(int argc, char **argv) {
   int i, j, ret;
 
@@ -1657,255 +1516,43 @@ int main(int argc, char **argv) {
 
   /* Initialisation de GTK+ */
   gtk_init(&argc, &argv);
+  char title[80];
+  char title[MAX_TITLE_LENGTH] = "Jeu du Othello";
+  strncat(title, " - ", MAX_TITLE_LENGTH - strlen(title));
+  strncat(title, port, MAX_TITLE_LENGTH - strlen(title));
 
-  /* Création d'un nouveau GtkBuilder */
-  p_builder = gtk_builder_new();
+  // On initialise les éléménets relatifs à GTK
+  if (!init_gtk(title)) {
+    exit(1);
+  }
 
-  if (p_builder != NULL) {
-    /* Chargement du XML dans p_builder */
-    gtk_builder_add_from_file(p_builder, "UI_Glade/Othello.glade", &p_err);
-
-    if (p_err == NULL) {
-      /* Récupération d'un pointeur sur la fenêtre. */
-      GtkWidget *p_win =
-          (GtkWidget *)gtk_builder_get_object(p_builder, "window1");
-
-      /* En plus, ajout du port dans le titre */
-      char titre[80];
-      strcpy(titre, "Projet Othello - ");
-      strcat(titre, argv[1]);
-      gtk_window_set_title(GTK_WINDOW(p_win), titre);
-
-      /* DÉBUT Gestion événement clic pour chacune des cases du damier */
-      {
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH1"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH2"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH3"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH4"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH5"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH6"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH7"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxB8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxC8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxD8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxE8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxF8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxG8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "eventboxH8"),
-                         "button_press_event", G_CALLBACK(coup_joueur), NULL);
-        /* FIN Gestion événement clic pour chacune des cases du damier */
-
-        /* Gestion clic boutons interface */
-        g_signal_connect(gtk_builder_get_object(p_builder, "button_connect"),
-                         "clicked", G_CALLBACK(clique_connect_serveur), NULL);
-        g_signal_connect(gtk_builder_get_object(p_builder, "button_start"),
-                         "clicked", G_CALLBACK(clique_connect_adversaire),
-                         NULL);
-
-        /* Gestion clic bouton fermeture fenêtre */
-        g_signal_connect_swapped(G_OBJECT(p_win), "destroy",
-                                 G_CALLBACK(gtk_main_quit), NULL);
-      }
-
-      /* Récuperation numéro port donné en paramètre */
-      port = atoi(argv[1]);
-
-      // gele_damier();
-
-      /* Initialisation du damier de jeu ; toutes les cases valent -1 */
-      for (i = 0; i < TAILLE_DAMIER; ++i) {
-        for (j = 0; j < TAILLE_DAMIER; ++j) {
-          damier[i][j] = VIDE;
-        }
-      }
-
-      /*
-       * Initialisation socket et autres objets,
-       * et création thread pour communication avec joueur adverse
-       */
-
-      /*
-       * Acceptation connexion adversaire
-       */
-      memset(&hints, 0, sizeof(hints));  // idem que ci-dessus
-      hints.ai_family = AF_UNSPEC;
-      hints.ai_socktype = SOCK_STREAM;
-      hints.ai_flags = AI_PASSIVE;  // trouve automatiquement mon IP
-      // car premier param de getaddrinfo = NULL
-      status = getaddrinfo(NULL, argv[1], &hints, &servinfo);
-      if (status != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        return 1;
-      }
-      // Création socket et attachement
-      for (p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) ==
-            -1) {
-          perror("server: socket");
-          continue;
-        }
-        // attachement de la socket - serveur
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-          close(sockfd);
-          // FD_CLR(sockfd, &master);
-          perror("server: bind");
-          continue;
-        }
-        printf("[Port joueur : %s] Ok socket correct\n", argv[1]);
-        break;
-      }
-      if (p == NULL) {
-        fprintf(stderr, "server: failed to bind\n");
-        return 2;
-      }
-      freeaddrinfo(servinfo);  // Libère structure
-      /*
-       * le serveur ecoute et est en attente d'une demande de connexion
-       * socket d'écoute cote serveur
-       * Fonction bloquante
-       * @param2 est nombre max de connexion en attente de traitement
-       */
-      listen(sockfd, 1);
-
-      FD_ZERO(&master);
-      FD_ZERO(&read_fds);
-
-      /*
-       * Ajout descripteur du signal dans ensemble
-       * de descripteur utilisé avec fonction select
-       */
-      FD_SET(sockfd, &master);
-      read_fds = master;  // copie des ensembles
-      fdmax = sockfd;
-
-      /* Création thread serveur écoute message */
-      ret = pthread_create(&thread_id, NULL, f_com_socket, NULL);
-      if (ret != 0) {
-        sprintf(stderr, "%s", strerror(ret));
-        exit(1);
-      }
-
-      gtk_widget_show_all(p_win);
-      gtk_main();
-    } else {
-      /* Affichage du message d'erreur de GTK+ */
-      g_error("%s", p_err->message);
-      g_error_free(p_err);
+  /* Initialisation du board de jeu ; toutes les cases valent -1 */
+  for (i = 0; i < BOARD_SIZE; ++i) {
+    for (j = 0; j < BOARD_SIZE; ++j) {
+      board[i][j] = EMPTY;
     }
   }
+
+  //  Initialisation socket et autres objets,
+  //  et création thread pour communication avec joueur adverse
+
+  // Récuperation numéro port donné en paramètre
+  port = atoi(argv[1]);
+  if (!init_socket(port)) {
+    exit(1);
+  }
+
+  /* Création thread serveur écoute message */
+  ret = pthread_create(&thread_id, NULL, f_com_socket, NULL);
+  if (ret != 0) {
+    sprintf(stderr, "%s", strerror(ret));
+    exit(1);
+  }
+
+  gele_damier();
+
+  gtk_widget_show_all(p_win);
+  gtk_main();
 
   return EXIT_SUCCESS;
 }

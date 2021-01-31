@@ -31,8 +31,7 @@ ifeq ($(CC),gcc)
 endif
 
 # Makefile settings - Can be customized.
-NAME_CLIENT = othello
-NAME_SERVER = othello_server
+NAME = othello
 SRC = src
 BIN = bin
 OBJ = obj
@@ -45,9 +44,9 @@ RM = \rm
 # Cibles
 .PHONY: clean cleanb cleano cleanfifo all
 
-all: $(NAME_CLIENT)
+all: $(NAME)
 
-$(NAME_CLIENT): othello_GUI.o
+$(NAME): $(NAME).o
 	$(CC) $(CLIBS) $(CFLAGS) -o $(BIN)/$@ $(OBJ)/$<
 
 %.o: $(SRC)/%.c $(SRC)/%.h
@@ -60,7 +59,7 @@ $(NAME_CLIENT): othello_GUI.o
 clean: cleanb cleano cleanfifo
 
 cleanb:
-	@$(RM) -f $(BIN)/$(NAME_CLIENT)
+	@$(RM) -f $(BIN)/$(NAME)
 
 cleano:
 	@find . -type f -name '*.o' -delete
