@@ -2,13 +2,11 @@
 #define _GNU_SOURCE
 #include "othello.h"
 
-#include <gtk/gtk.h>
 #include <inttypes.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,35 +17,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#define MAX_DATA_SIZE 256
-#define BOARD_SIZE 8
-#define MAX_TITLE_LENGTH 45
-
-#define LABEL_YOU "Vous"
-#define LABEL_ADVERSARY "Adversaire"
-#define MESSAGE_YOU_WON "Fin de la partie.\n\n Vous avez gagné!!!"
-#define MESSAGE_YOU_LOST "Fin de la partie.\n\nVous avez perdu!"
-#define MESSAGE_STALEMATE "Impossible de jouer.\n\n :)"
-
-typedef enum color { BLACK, WHITE, EMPTY, OUT } color_e;
-typedef enum type { COORD, COLOR, END, NO_MOVE_POSSIBLE } type_e;
-
-typedef struct request_data {
-  unsigned short type;  // 0 pour la couleur, 1 pour les coordonnées x, y
-  unsigned short x;
-  unsigned short y;
-  unsigned short color;
-} request_s;
-
-/* Variables globales */
-color_e board[BOARD_SIZE][BOARD_SIZE];  // tableau associe au damier
-color_e my_color;
-
-int port;  // numero port passe a l'appel
-
+int port;                   // numero port passe a l'appel
 char *adv_addr, *adv_port;  // Info sur adversaire
-
-pthread_t thread_id;  // Id du thread fils gerant connexion socket
 
 int sockfd, newsockfd = -1;     // descripteurs de socket
 int addr_size;                  // taille adresse
@@ -57,297 +28,16 @@ fd_set master, read_fds, write_fds;  // ensemble de socket pour toutes les
                                      // sockets actives avec select
 int fdmax;                           // utilise pour select
 
-int status;
 struct addrinfo hints, *servinfo, *p;
+
+pthread_t thread_id;  // Id du thread fils gerant connexion socket
 
 /* Variables globales associées à l'interface graphique */
 GtkBuilder *p_builder = NULL;
 GError *p_err = NULL;
 GtkWidget *p_win = NULL;
 
-/** DEBUT DES ENTÊTES DES FONCTIONS **/
-
-/**
- * Fonction permettant de changer l'image d'une case du damier
- * (indiqué par sa colonne et sa row)
- * @param col la colonne de la case du damier
- * @param lig la row de la case du damier
- * @param couleur_j la couleur du joueur (0 noir, 1 blanc)
- */
-void update_cell_image(int col, int row, color_e p_color);
-
-/**
- * Fonction permettant changer nom joueur blanc dans cadre Score
- * @param texte nom du J1 (blanc)
- * @usefulfor interface graphique
- */
-void set_label_black(const char *texte);
-
-/**
- * Fonction permettant changer nom joueur noir dans cadre Score
- * @param texte nom du J2 (noir)
- * @usefulfor interface graphique
- */
-void set_label_white(const char *texte);
-
-/**
- * Fonction permettant de changer score joueur blanc dans cadre Score
- * @param score le score du J1 (blanc)
- * @see get_score_J1(void)
- */
-void set_score_black(int score);
-
-/**
- * Fonction permettant de récupérer score joueur blanc dans cadre Score
- * @return le score du J1 (blanc)
- * @see set_score_J1(int)
- */
-int get_score_black(void);
-
-/**
- * Fonction permettant de changer score joueur noir dans cadre Score
- * @param score le score du J2 (noir)
- * @see #get_score_J2(void)
- */
-void set_score_white(int score);
-
-/**
- * Fonction permettant de récupérer score joueur noir dans cadre Score
- * @return le score du J2 (noir)
- * @see #set_score_J2(int)
- */
-int get_score_white(void);
-
-/**
- * Fonction transformant les coordonnees du damier graphique
- * en indexes pour matrice du damier
- */
-void coord_to_indexes(const gchar *coord, int *col, int *lig);
-
-/**
- * Fonction transformant les indexes pour matrice
- * du damier en coordonnees du damier graphique
- */
-void indexes_to_coord(int col, int lig, char *coord);
-
-/**
- * Fonction appelee lors du clic
- * sur une case du damier
- */
-static void on_click_cell(GtkWidget *p_case);
-
-/**
- * Fonction retournant texte du champs adresse
- * du serveur de l'interface graphique
- * @return l'adresse du serveur
- */
-char *read_adv_server(void);
-
-/**
- * Fonction retournant le texte du champs port
- * du serveur de l'interface graphique
- * @return le port du serveur
- */
-char *read_server_port(void);
-
-/**
- * Fonction retournant le texte du champs login
- * de l'interface graphique
- * @return le login
- */
-char *read_login(void);
-
-/**
- * Fonction retournant le texte du champs adresse
- * du cadre Joueurs de l'interface graphique
- * @return l'adresse de l'adversaire
- */
-char *read_adv_addr(void);
-
-/**
- * Fonction retournant le texte du champs port
- * du cadre Joueurs de l'interface graphique
- * @return le port de l'adversaire
- */
-char *read_adv_port(void);
-
-/**
- * Fonction permettant d'afficher
- * soit #affiche_fenetre_gagne(void)
- * soit #affiche_fenetre_perdu(void)
- * en fonction des cas et en fonction
- * de la couleur qui jouer
- */
-void show_lose_or_win(void);
-
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est gagnée
- * @usefulfor interface graphique
- */
-void show_win(void);
-
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est perdue
- * @usefulfor interface graphique
- */
-void show_lost(void);
-
-/**
- * Fonction affichant une boite de dialogue
- * si le joueur ne peut pas jouer
- * @usefulfor interface graphique
- */
-void show_stalemate(void);
-
-/**
- * Fonction appelée lors du clic du bouton Se connecter
- * @usefulfor interface graphique
- */
-static void on_click_connect(GtkWidget *b);
-
-/**
- * Fonction desactivant bouton demarrer partie
- * @usefulfor interface graphique
- */
-void disable_button_start(void);
-
-/**
- * Fonction appelee lors du clic du bouton Demarrer partie
- * @usefulfor interface graphique
- */
-static void on_click_start(GtkWidget *b);
-
-/**
- * Fonction desactivant les cases du damier
- * pour attendre que l'utilisateur adverse joue (ignore les clics du joueurs
- * courant)
- * @usefulfor interface graphique
- * @see #degele_damier(void)
- */
-void freeze_board(void);
-
-/**
- * Fonction activant les cases du damier
- * pour que l'utilisateur puisse jouer
- * @usefulfor interface graphique
- * @see #gele_damier(void)
- */
-void unfreeze_board(void);
-
-/**
- * Fonction permettant d'initialiser le plateau de jeu
- * @usefulfor interface graphique
- */
-void init_interface(void);
-
-/**
- * Fonction reinitialisant la liste des joueurs sur l'interface graphique
- * @usefulfor interface graphique
- */
-void reset_liste_joueurs(void);
-
-/**
- * Fonction permettant d'ajouter un joueur
- * dans la liste des joueurs sur l'interface graphique
- * @param login le login du joueur
- * @param adresse l'adresse ip du joueur
- * @param port le port du joueur
- * @usefulfor interface graphique
- */
-void add_player_to_list(char *login, char *adress, char *port_s);
-
-/**
- * Fonction exécutée par le thread gérant
- * les communications à travers la socket
- */
-static void *f_com_socket(void *p_arg);
-
-// ajout des entetes qui ne sont pas du prof
-
-/**
- * Fonction vérifiant si une case est jouable
- * 1/ en vérifiant qu'on ne depasse pas la taille du damier
- * 2/ que l'on joue en se basant sur son voisin
- */
-bool playable(int col, int lig, color_e p_color);
-
-/**
- * Fonction permettant de changer la couleur de la case
- */
-void set_case(int col, int row, color_e p_color);
-
-/**
- * Fonction qui retourne si on doit changer la row
- */
-bool change_ligne(int col, int row, int dx, int dy, color_e p_color);
-
-/**
- * Fonction changeant la couleur des cases
- * @see #changement_case(int, int, int, int, int)
- */
-void update_cells(int col, int row, color_e p_color);
-
-/**
- * Fonction changeant la couleur des cases dans la direction choisie
- */
-void update_cell_directed(int col, int row, int dx, int dy, color_e p_color);
-
-/**
- * Fonction permettant de savoir
- * si on peut encore placer des pièces
- */
-bool game_is_over(void);
-
-/**
- * Fonction permettant de savoir
- * si les deux joueurs ne peuvent poser
- * plus de pièces
- * @see http://www.ffothello.org/images/jeu/regles/figure-10.jpg
- */
-bool early_game_over(void);
-
-/**
- * Fonction permettant de savoir
- * si le joueur ne peut pas jouer
- */
-bool stalemate(void);
-
-/**
- * Fonction permettant de retourner la couleur de la case
- */
-color_e get_board_color(int col, int row);
-
-/**
- * Fonction retournant la couleur du joueur courant
- */
-color_e get_player_color(void);
-
-/**
- * Fonction initialisant la couleur du joueur courant
- */
-void set_player_couleur(color_e p_color);
-
-/**
- * Fonction retournant la couleur de l'adversaire
- */
-color_e get_adv_color(void);
-
-/**
- * Fonction retournant la couleur adverse
- * @param la couleur
- * @return la couleur adverse à @param
- */
-color_e get_opposite_color(color_e p_color);
-
-/** FIN DES ENTÊTES DES FONCTIONS **/
-
-/**
- * Fonction transformant les coordonnees du damier graphique
- * en indexes pour matrice du damier
- */
-void coord_to_indexes(const gchar *coord, int *col, int *lig) {
+void coord_to_indexes(const gchar *coord, int *col, int *row) {
   char *c;
   c = malloc(2 * sizeof(char));
 
@@ -371,13 +61,9 @@ void coord_to_indexes(const gchar *coord, int *col, int *lig) {
   else if (strcmp(c, "H") == 0)
     *col = 7;
 
-  *lig = atoi(coord + 1) - 1;
+  *row = atoi(coord + 1) - 1;
 }
 
-/**
- * Fonction transformant les indexes pour matrice
- * du damier en coordonnees du damier graphique
- */
 void indexes_to_coord(int col, int lig, char *coord) {
   char c;
 
@@ -401,15 +87,6 @@ void indexes_to_coord(int col, int lig, char *coord) {
   sprintf(coord, "%c%d", c, lig + 1);
 }
 
-// Fin ajout
-
-/**
- * Fonction permettant de changer l'image d'une case du damier
- * (indiqué par sa colonne et sa row)
- * @param col la colonne de la case du damier
- * @param lig la row de la case du damier
- * @param couleur_j la couleur du joueur (0 noir, 1 blanc)
- */
 void update_cell_image(int col, int row, color_e p_color) {
   char *coord;
 
@@ -428,31 +105,16 @@ void update_cell_image(int col, int row, color_e p_color) {
   }
 }
 
-/**
- * Fonction permettant changer nom joueur blanc dans cadre Score
- * @param texte nom du J1 (blanc)
- * @usefulfor interface graphique
- */
 void set_label_black(const char *texte) {
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_J1")),
                      texte);
 }
 
-/**
- * Fonction permettant changer nom joueur noir dans cadre Score
- * @param texte nom du J2 (noir)
- * @usefulfor interface graphique
- */
 void set_label_white(const char *texte) {
   gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(p_builder, "label_J2")),
                      texte);
 }
 
-/**
- * Fonction permettant de changer score joueur blanc dans cadre Score
- * @param score le score du J1 (blanc)
- * @see #get_score_J1(void)
- */
 void set_score_black(int score) {
   char *s;
 
@@ -463,11 +125,6 @@ void set_score_black(int score) {
       GTK_LABEL(gtk_builder_get_object(p_builder, "label_ScoreJ1")), s);
 }
 
-/**
- * Fonction permettant de récupérer score joueur blanc dans cadre Score
- * @return le score du J1 (blanc)
- * @see #set_score_J1(int)
- */
 int get_score_black(void) {
   const gchar *c;
 
@@ -477,11 +134,6 @@ int get_score_black(void) {
   return atoi(c);
 }
 
-/**
- * Fonction permettant de changer score joueur noir dans cadre Score
- * @param score le score du J2 (noir)
- * @see #get_score_J2(void)
- */
 void set_score_white(int score) {
   char *s;
 
@@ -492,11 +144,6 @@ void set_score_white(int score) {
       GTK_LABEL(gtk_builder_get_object(p_builder, "label_ScoreJ2")), s);
 }
 
-/**
- * Fonction permettant de récupérer score joueur noir dans cadre Score
- * @return le score du J2 (noir)
- * @see #set_score_J2(int)
- */
 int get_score_white(void) {
   const gchar *c;
 
@@ -506,11 +153,6 @@ int get_score_white(void) {
   return atoi(c);
 }
 
-/**
- * Fonction vérifiant si une case est jouable
- * 1/ en vérifiant qu'on ne depasse pas la taille du damier
- * 2/ que l'on joue en se basant sur son voisin
- */
 bool playable(int col, int row, color_e p_color) {
   return (get_board_color(col, row) == EMPTY &&
           (change_ligne(col, row, -1, -1, p_color) ||
@@ -523,11 +165,8 @@ bool playable(int col, int row, color_e p_color) {
            change_ligne(col, row, 1, 1, p_color)));
 }
 
-/**
- * Fonction permettant de changer la couleur de la case
- */
 void set_case(int col, int row, color_e p_color) {
-  // on test la couleur de la case
+  //
   if (get_opposite_color(p_color) == get_board_color(col, row)) {
     if (p_color == WHITE) {
       set_score_black(get_score_black() + 1);
@@ -544,36 +183,31 @@ void set_case(int col, int row, color_e p_color) {
       set_score_white(get_score_white() + 1);
     }
   }
-  // On insere le pion de la couleur du joueur courant
+  // On insere la case de la couleur du joueur qui joue
   board[col][row] = p_color;
-  printf("changement couleur de %d;%d en %d\n", col, row, p_color);
-  // On change l'image de la case en transformant son numéro en img
+  printf("[case %d;%d] passage à %d\n", col, row, p_color);
+  // MAJ de l'image vers la couleur du joueur qui joue
   update_cell_image(col, row, p_color);
 }
 
 bool change_ligne(int col, int row, int dx, int dy, color_e p_color) {
   int cell_count = 0;
-  // on fait un parcours tant que la couleur de la selection de direction est
-  // différente
+  // tant qu'on parcout une case de couleur de celle opposée que
+  // l'on veut jouer
   col += dx;
   row += dy;
   while (get_board_color(col, row) == get_opposite_color(p_color)) {
-    // on increment le compteur
+    // On augmente le nombre de cases parcourue
     cell_count++;
-    // on increment le parcours vers la direction choisie
+    // On incrémente dans la direction choisie
     col += dx;
     row += dy;
   }
-  // si la couleur qu'on vient de parcourir est la même que la couleur du joueur
-  // qui vient de jouer ET que le compteur est supéreur a 1(pour dire que c'est
-  // pas un voisin de la meme couleur)
+  // Si tombe sur une case de notre couleur et qu'on a parcouru au moins
+  // 1 case de couleur adverse, on dit LETS GOO !
   return ((get_board_color(col, row) == p_color) && (cell_count > 0));
 }
 
-/**
- * Fonction changeant la couleur des cases
- * @see #changement_case(int, int, int, int, int)
- */
 void update_cells(int col, int row, color_e p_color) {
   if (change_ligne(col, row, 1, 1, p_color)) {
     update_cell_directed(col, row, 1, 1, p_color);
@@ -601,25 +235,18 @@ void update_cells(int col, int row, color_e p_color) {
   }
 }
 
-/**
- * Fonction changeant la couleur des cases dans la direction choisie
- */
 void update_cell_directed(int col, int row, int dx, int dy, color_e p_color) {
   col += dx;
   row += dy;
   while (get_board_color(col, row) == get_opposite_color(p_color)) {
-    // on change la couleur de la case et on met à jour le score
+    // Tant qu'on pulv la couleur adverse
     set_case(col, row, p_color);
-    // on increment le parcours vers la direction choisie
+    // On incrémente dans la direction choisie
     col += dx;
     row += dy;
   }
 }
 
-/**
- * Fonction permettant de savoir
- * si on peut encore placer des pièces
- */
 bool game_is_over(void) {
   int black_score, white_score, max_score;
   black_score = get_score_black();
@@ -628,13 +255,7 @@ bool game_is_over(void) {
   return ((black_score + white_score) == max_score);
 }
 
-/**
- * Fonction permettant de savoir
- * si les deux joueurs ne peuvent poser
- * plus de pièces
- * @see http://www.ffothello.org/images/jeu/regles/figure-10.jpg
- */
-bool early_game_over(void) {
+bool stalemate(void) {
   int i, j;
   for (i = 0; i < BOARD_SIZE; ++i) {
     for (j = 0; j < BOARD_SIZE; ++j) {
@@ -646,11 +267,7 @@ bool early_game_over(void) {
   return true;
 }
 
-/**
- * Fonction permettant de savoir
- * si le joueur ne peut pas jouer
- */
-bool stalemate(void) {
+bool player_cant_play(void) {
   int i, j;
   for (i = 0; i < BOARD_SIZE; ++i) {
     for (j = 0; j < BOARD_SIZE; ++j) {
@@ -662,9 +279,6 @@ bool stalemate(void) {
   return true;
 }
 
-/**
- * Fonction permettant de retourner la couleur de la case
- */
 color_e get_board_color(int col, int row) {
   if ((col < 0) || (row < 0) || (col >= BOARD_SIZE) || (row >= BOARD_SIZE)) {
     return OUT;
@@ -673,19 +287,10 @@ color_e get_board_color(int col, int row) {
   }
 }
 
-/**
- * Fonction retournant la couleur du joueur courant
- */
 color_e get_player_color(void) { return my_color; }
 
-/**
- * Fonction initialisant la couleur du joueur courant
- */
 void set_player_couleur(color_e p_color) { my_color = p_color; }
 
-/**
- * Fonction retournant la couleur de l'adversaire
- */
 color_e get_adv_color(void) {
   if (get_player_color() == WHITE) {
     return BLACK;
@@ -696,11 +301,6 @@ color_e get_adv_color(void) {
   return EMPTY;
 }
 
-/**
- * Fonction retournant la couleur adverse
- * @param la couleur
- * @return la couleur adverse à @param
- */
 color_e get_opposite_color(color_e p_color) {
   if (p_color == WHITE) {
     return BLACK;
@@ -711,10 +311,6 @@ color_e get_opposite_color(color_e p_color) {
   return EMPTY;
 }
 
-/**
- * Fonction appelee lors du clic
- * sur une case du damier
- */
 static void on_click_cell(GtkWidget *p_case) {
   int col, row;
   char buf[MAX_DATA_SIZE];
@@ -728,35 +324,8 @@ static void on_click_cell(GtkWidget *p_case) {
       &col, &row);
 
   if (game_is_over()) {
-    // les joueurs ne peuvent pas jouer car le jeu est rempli
-    // donc partie finie
+    // Partie finie car plateau plein
     freeze_board();
-
-    // préparation message et envoie sur socket à adversaire
-    req.type = htons((unsigned short)END);
-
-    printf("Requête à envoyer %u\n", req.type);
-    bzero(buf, MAX_DATA_SIZE);
-    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
-
-    printf("Envoyer requête %s\n", buf);
-    if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
-      perror("send");
-      close(newsockfd);
-    }
-
-    show_lose_or_win();
-  } else if (early_game_over()) {
-    // les deux joueurs ne peuvent pas placer le pion
-    // donc partie finie
-    // les places vident vont au gagnant
-    int place_vide =
-        (BOARD_SIZE * BOARD_SIZE) - (get_score_black() + get_score_white());
-    if (get_score_black() > get_score_white()) {
-      set_score_black(get_score_black() + place_vide);
-    } else {
-      set_score_white(get_score_white() + place_vide);
-    }
 
     // préparation message et envoie sur socket à adversaire
     req.type = htons((unsigned short)END);
@@ -773,11 +342,36 @@ static void on_click_cell(GtkWidget *p_case) {
 
     show_lose_or_win();
   } else if (stalemate()) {
+    // Partie fini car les joueurs ne peuvent plus poser de pions
+    int empty_cells =
+        (BOARD_SIZE * BOARD_SIZE) - (get_score_black() + get_score_white());
+    if (get_score_black() > get_score_white()) {
+      set_score_black(get_score_black() + empty_cells);
+    } else {
+      set_score_white(get_score_white() + empty_cells);
+    }
+
+    // On dit que c'est finito
+    req.type = htons((unsigned short)END);
+
+    printf("Requête à envoyer %u\n", req.type);
+    bzero(buf, MAX_DATA_SIZE);
+    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
+
+    printf("Envoyer requête %s\n", buf);
+    // Et zé parti
+    if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
+      perror("send");
+      close(newsockfd);
+    }
+
+    show_lose_or_win();
+  } else if (player_cant_play()) {
     // le joueur ne peut pas placer le pion mais l'autre si
 
     freeze_board();
 
-    // préparation message et envoie sur socket à adversaire
+    // On dit que je peux pas jouer azy j'ai le démon
     req.type = htons((unsigned short)NO_MOVE_POSSIBLE);
 
     printf("Requête à envoyer %u\n", req.type);
@@ -793,15 +387,16 @@ static void on_click_cell(GtkWidget *p_case) {
     show_stalemate();
   } else {
     if (playable(col, row, get_player_color())) {
-      // change la case
+      // Dans cette situation on peut jouer la case :)
+      // changer la case à la couleur
       set_case(col, row, get_player_color());
       freeze_board();
-      // déterminer pions dont la couleur modifie + score
+      // MAJ Cellules et scores
       update_cells(col, row, get_player_color());
 
       printf("Info à envoyer : %u %u\n", col, row);
 
-      // préparation message et envoie sur socket à adversaire
+      // on envoie notre move à l'adversaire
       req.type = htons((unsigned short)COORD);
       req.x = htons((unsigned short)col);
       req.y = htons((unsigned short)row);
@@ -818,11 +413,6 @@ static void on_click_cell(GtkWidget *p_case) {
   }
 }
 
-/**
- * Fonction retournant texte du champs adresse
- * du serveur de l'interface graphique
- * @return l'adresse du serveur
- */
 char *read_adv_server(void) {
   GtkWidget *entry_addr_srv;
 
@@ -831,11 +421,6 @@ char *read_adv_server(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_srv));
 }
 
-/**
- * Fonction retournant le texte du champs port
- * du serveur de l'interface graphique
- * @return le port du serveur
- */
 char *read_server_port(void) {
   GtkWidget *entry_port_srv;
 
@@ -844,11 +429,6 @@ char *read_server_port(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_srv));
 }
 
-/**
- * Fonction retournant le texte du champs login
- * de l'interface graphique
- * @return le login
- */
 char *read_login(void) {
   GtkWidget *entry_login;
 
@@ -857,41 +437,24 @@ char *read_login(void) {
   return (char *)gtk_entry_get_text(GTK_ENTRY(entry_login));
 }
 
-/**
- * Fonction retournant le texte du champs adresse
- * du cadre Joueurs de l'interface graphique
- * @return l'adresse de l'adversaire
- */
 char *read_adv_addr(void) {
-  GtkWidget *entry_addr_j2;
+  GtkWidget *entry_addr_adv;
 
-  entry_addr_j2 =
+  entry_addr_adv =
       (GtkWidget *)gtk_builder_get_object(p_builder, "entry_addr_j2");
 
-  return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_j2));
+  return (char *)gtk_entry_get_text(GTK_ENTRY(entry_addr_adv));
 }
 
-/**
- * Fonction retournant le texte du champs port
- * du cadre Joueurs de l'interface graphique
- * @return le port de l'adversaire
- */
 char *read_adv_port(void) {
-  GtkWidget *entry_port_j2;
+  GtkWidget *entry_port_adv;
 
-  entry_port_j2 =
+  entry_port_adv =
       (GtkWidget *)gtk_builder_get_object(p_builder, "entry_port_j2");
 
-  return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_j2));
+  return (char *)gtk_entry_get_text(GTK_ENTRY(entry_port_adv));
 }
 
-/**
- * Fonction permettant d'afficher
- * soit #affiche_fenetre_gagne(void)
- * soit #affiche_fenetre_perdu(void)
- * en fonction des cas et en fonction
- * de la couleur qui jouer
- */
 void show_lose_or_win(void) {
   if (get_player_color() == WHITE) {
     if (get_score_black() > get_score_white()) {
@@ -908,11 +471,6 @@ void show_lose_or_win(void) {
   }
 }
 
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est gagnée
- * @usefulfor interface graphique
- */
 void show_win(void) {
   GtkWidget *dialog;
 
@@ -927,11 +485,6 @@ void show_win(void) {
   gtk_widget_destroy(dialog);
 }
 
-/**
- * Fonction affichant une boite de dialogue
- * si la partie est perdue
- * @usefulfor interface graphique
- */
 void show_lost(void) {
   GtkWidget *dialog;
 
@@ -946,11 +499,6 @@ void show_lost(void) {
   gtk_widget_destroy(dialog);
 }
 
-/**
- * Fonction affichant une boite de dialogue
- * si le joueur ne peut pas jouer
- * @usefulfor interface graphique
- */
 void show_stalemate(void) {
   GtkWidget *dialog;
 
@@ -965,31 +513,15 @@ void show_stalemate(void) {
   gtk_widget_destroy(dialog);
 }
 
-/**
- * Fonction appelée lors du clic du bouton Se connecter
- * @usefulfor interface graphique
- */
 static void on_click_connect(GtkWidget *b) {
-  /*
-   * TO DO
-   */
+  // TODO -> Pas eu le temps & que 2 dans le groupe
 }
 
-/**
- * Fonction desactivant bouton demarrer partie
- * @usefulfor interface graphique
- */
 void disable_button_start(void) {
   gtk_widget_set_sensitive(
       (GtkWidget *)gtk_builder_get_object(p_builder, "button_start"), FALSE);
 }
 
-// Ajout
-
-/**
- * Fonction appelee lors du clic du bouton Demarrer partie
- * @usefulfor interface graphique
- */
 static void on_click_start(GtkWidget *b) {
   if (newsockfd == -1) {
     // Desactivation bouton demarrer partie
@@ -1008,15 +540,6 @@ static void on_click_start(GtkWidget *b) {
   }
 }
 
-// Fin ajout
-
-/**
- * Fonction desactivant les cases du damier
- * pour attendre que l'utilisateur adverse joue (ignore les clics du joueurs
- * courant)
- * @usefulfor interface graphique
- * @see #degele_damier(void)
- */
 void freeze_board(void) {
   gtk_widget_set_sensitive(
       (GtkWidget *)gtk_builder_get_object(p_builder, "eventboxA1"), FALSE);
@@ -1148,12 +671,6 @@ void freeze_board(void) {
       (GtkWidget *)gtk_builder_get_object(p_builder, "eventboxH8"), FALSE);
 }
 
-/**
- * Fonction activant les cases du damier
- * pour que l'utilisateur puisse jouer
- * @usefulfor interface graphique
- * @see #gele_damier(void)
- */
 void unfreeze_board(void) {
   gtk_widget_set_sensitive(
       (GtkWidget *)gtk_builder_get_object(p_builder, "eventboxA1"), TRUE);
@@ -1285,31 +802,17 @@ void unfreeze_board(void) {
       (GtkWidget *)gtk_builder_get_object(p_builder, "eventboxH8"), TRUE);
 }
 
-/**
- * Fonction permettant d'initialiser le plateau de jeu
- * @usefulfor interface graphique
- */
 void init_interface(void) {
-  // initialisation score à 0
+  // initialisation des scores à 0
   set_score_black(0);
   set_score_white(0);
-  /**
-   * Initilisation du damier (D4=blanc, E4=noir, D5=noir, E5=blanc)
-   * D2 blanc équivaut à {3, 1, 1}
-   * (car D, 4e lettre, donc => 3)
-   * (4, 4e chiffre, donc => 1)
-   */
+
+  // On initialise les cases initiales du plateau
   set_case(3, 3, WHITE);
-
   set_case(4, 3, BLACK);
-
   set_case(3, 4, BLACK);
-
   set_case(4, 4, WHITE);
 
-  /**
-   * Initialisation des scores et des joueurs
-   */
   if (get_player_color() == WHITE) {
     set_label_black(LABEL_YOU);
     set_label_white(LABEL_ADVERSARY);
@@ -1319,10 +822,7 @@ void init_interface(void) {
   }
 }
 
-/**
- * Fonction reinitialisant la liste des joueurs sur l'interface graphique
- * @usefulfor interface graphique
- */
+// Pas utilisée
 void reset_liste_joueurs(void) {
   GtkTextIter start, end;
 
@@ -1341,14 +841,7 @@ void reset_liste_joueurs(void) {
       &start, &end);
 }
 
-/**
- * Fonction permettant d'ajouter un joueur
- * dans la liste des joueurs sur l'interface graphique
- * @param login le login du joueur
- * @param adresse l'adresse ip du joueur
- * @param port le port du joueur
- * @usefulfor interface graphique
- */
+// Pas utilisée
 void add_player_to_list(char *login, char *adresse, char *port_s) {
   const gchar *joueur;
 
@@ -1789,6 +1282,7 @@ bool init_gtk(char title[MAX_TITLE_LENGTH]) {
 // Fonction dans laquelle je range l'initialistion
 // de la socket serveur qui attend les demandes de connexion
 bool init_socket(char *port_str) {
+  int status;
   memset(&hints, 0, sizeof(hints));  // idem que ci-dessus
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -1843,6 +1337,7 @@ bool init_socket(char *port_str) {
   return true;
 }
 
+// Point d'entrée du programme
 int main(int argc, char **argv) {
   int error_code;
   char title[MAX_TITLE_LENGTH];
