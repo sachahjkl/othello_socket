@@ -26,9 +26,9 @@ static color_e board[BOARD_SIZE]
 static color_e my_color;           // couleur de notre joueur
 
 typedef struct request_data {
-  unsigned short type;  // 0 pour la couleur, 1 pour les coordonnées x, y
   unsigned short x;
   unsigned short y;
+  unsigned short type;  // @see enum type
   unsigned short color;
 } request_s;
 

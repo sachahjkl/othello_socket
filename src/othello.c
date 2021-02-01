@@ -30,9 +30,9 @@ int fdmax;                           // utilise pour select
 
 struct addrinfo hints, *servinfo, *p;
 
-pthread_t thread_id;  // Id du thread fils gerant connexion socket
+pthread_t thread_id;  // Id du thread dans lequel tourne la boucle du jeu
 
-/* Variables globales associées à l'interface graphique */
+// Globales de l'interface GTK+
 GtkBuilder *p_builder = NULL;
 GError *p_err = NULL;
 GtkWidget *p_win = NULL;
@@ -330,11 +330,11 @@ static void on_click_cell(GtkWidget *p_case) {
     // préparation message et envoie sur socket à adversaire
     req.type = htons((unsigned short)END);
 
-    printf("Requête à envoyer %u\n", req.type);
+    printf("[%d] request type : %u\n", port, req.type);
     bzero(buf, MAX_DATA_SIZE);
     snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
 
-    printf("Envoyer requête %s\n", buf);
+    printf("[%d] sending request %s\n", port, buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
       perror("send");
       close(newsockfd);
@@ -354,11 +354,11 @@ static void on_click_cell(GtkWidget *p_case) {
     // On dit que c'est finito
     req.type = htons((unsigned short)END);
 
-    printf("Requête à envoyer %u\n", req.type);
+    printf("[%d] request type : %u\n", port, req.type);
     bzero(buf, MAX_DATA_SIZE);
     snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
 
-    printf("Envoyer requête %s\n", buf);
+    printf("[%d] sending request %s\n", port, buf);
     // Et zé parti
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
       perror("send");
@@ -374,11 +374,11 @@ static void on_click_cell(GtkWidget *p_case) {
     // On dit que je peux pas jouer azy j'ai le démon
     req.type = htons((unsigned short)NO_MOVE_POSSIBLE);
 
-    printf("Requête à envoyer %u\n", req.type);
+    printf("[%d] request type : %u\n", port, req.type);
     bzero(buf, MAX_DATA_SIZE);
     snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
 
-    printf("Envoyer requête %s\n", buf);
+    printf("[%d] sending request %s\n", port, buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
       perror("send");
       close(newsockfd);
@@ -394,17 +394,18 @@ static void on_click_cell(GtkWidget *p_case) {
       // MAJ Cellules et scores
       update_cells(col, row, get_player_color());
 
-      printf("Info à envoyer : %u %u\n", col, row);
+      printf("[%d] have to send coords {%u;%u}\n", port, col, row);
 
       // on envoie notre move à l'adversaire
       req.type = htons((unsigned short)COORD);
       req.x = htons((unsigned short)col);
       req.y = htons((unsigned short)row);
-      printf("Requête à envoyer %u : %u %u\n", req.type, req.x, req.y);
+      printf("[%d] sending request {type: %u, x: %u, y: %u}\n", port, req.type,
+             req.x, req.y);
       bzero(buf, MAX_DATA_SIZE);
       snprintf(buf, MAX_DATA_SIZE, "%u, %u, %u", req.type, req.x, req.y);
 
-      printf("Envoyer requête %s\n", buf);
+      printf("[%d] sending formatted request %s\n", port, buf);
       if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
         perror("send");
         close(newsockfd);
@@ -866,7 +867,7 @@ static void *f_com_socket(void *p_arg) {
   char *token;
   char *saveptr;
 
-  // ajout initiasation requete
+  // Structure dans laquelle on range les données des échanges
   request_s req;
 
   /* Association descripteur au signal SIGUSR1 */
@@ -917,50 +918,40 @@ static void *f_com_socket(void *p_arg) {
            * pour connexion au joueur adverse
            */
           if (newsockfd == -1) {
-            memset(&hints, 0, sizeof(hints));  // rempli hints de 0
-            hints.ai_family =
-                AF_UNSPEC;  //ça peut donc être une IPV4 ou IPV6 ; ça gère les 2
-            hints.ai_socktype = SOCK_STREAM;  // communication connectée ;
-                                              // Utilise le protocole TCP
+            memset(&hints, 0, sizeof(hints));  // on met à 0 la structure
+            hints.ai_family = AF_UNSPEC;       // IPV4/IPV6
+            hints.ai_socktype = SOCK_STREAM;   // Socket TCP
 
-            rv = getaddrinfo(adv_addr, adv_port, &hints,
-                             &servinfo);  // rempli automatiquement une
-                                          // structure addinfo (param4)
+            rv = getaddrinfo(adv_addr, adv_port, &hints, &servinfo);
 
-            if (rv != 0)  // getaddrinfo a-t-il fonctionné ? 0 = Non
+            if (rv != 0)  // Si on a pas récupéré les infos
             {
               fprintf(stderr, "getaddrinfo:%s\n", gai_strerror(rv));
             }
-            // création socket et attachement
+            //
             for (p = servinfo; p != NULL; p = p->ai_next) {
-              if ((newsockfd =
-                       socket(p->ai_family, p->ai_socktype, p->ai_protocol)) ==
-                  -1)  // sockfd est la socket du client
-              {
+              if ((newsockfd = socket(p->ai_family, p->ai_socktype,
+                                      p->ai_protocol)) == -1) {
                 perror("client: socket");
                 continue;
               }
               if (connect(newsockfd, p->ai_addr, p->ai_addrlen) ==
-                  -1)  // attachement de la socket - client
+                  -1)  // connexion à la socket client
               {
                 close(newsockfd);
-                // FD_CLR(newsockfd, &master);
                 perror("client: connect");
                 continue;
               }
               break;
             }
             if (p == NULL) {
-              fprintf(stderr, "server : failed to bind\n");
+              fprintf(stderr, "[%d] failed to bind\n", port);
               exit(2);
             }
 
-            freeaddrinfo(servinfo);  // libère la structure
+            freeaddrinfo(servinfo);
 
-            /*
-             * Ajout descripteur du signal dans ensemble
-             * de descripteur utilisé avec fonction select
-             */
+            // On rajoute à notre ensemble de socket
             FD_SET(newsockfd, &master);
 
             if (newsockfd > fdmax) {
@@ -970,12 +961,11 @@ static void *f_com_socket(void *p_arg) {
             close(sockfd);
             FD_CLR(sockfd, &master);
 
-            // fermeture et suppression de fd_signal de l'ensemble master
+            // On a plus besoin du bouton de lancement de partie
             close(fd_signal);
             FD_CLR(fd_signal, &master);
 
-            // Choix de couleur à compléter
-
+            // Dans les règles du Othello, le joueur noir commence
             set_player_couleur(BLACK);
             req.type = htons((unsigned short)COLOR);
             req.color = htons((unsigned short)get_adv_color());
@@ -990,47 +980,33 @@ static void *f_com_socket(void *p_arg) {
               perror("send");
               close(newsockfd);
             }
-            // le noir joue en 1er
-            // initialisation interface graphique
             init_interface();
+            // On peut dégeler puisqu'on est les premiers à jouer
             unfreeze_board();
           }
         }
 
-        if (i == sockfd) {  // acceptation connexion adversaire
-
+        if (i == sockfd) {  // Adversaire veut se connecter
           printf("i == sockfd\n");
 
           if (newsockfd == -1) {
             addr_size = sizeof(adv_sockaddr);
-            /*
-             * Accepte une connexion client
-             * et retourne nouveau descripteur de socket de service
-             * pour traiter la requête du client
-             * Fonction bloquante
-             * @param1 socket d'écoute côté serveur
-             * @param2 structure adresse + port du client
-             * @param3 taille du param2 (cf ci-dessus)
-             */
+            // On initialise la socket pour communiquer avec l'adversaire
             newsockfd = accept(sockfd, adv_sockaddr, (socklen_t *)&addr_size);
 
             if (newsockfd == -1) {
-              perror("problème avec accept");
+              perror("failed to accept");
             } else {
-              /*
-               * Ajout du nouveau descripteur dans ensemble
-               * de descripteur utilisé avec fonction select
-               */
+              // Si tout va bien, on peut l'ajouter à notre ensemble
+              // de socket.
               FD_SET(newsockfd, &master);
 
               if (newsockfd > fdmax) {
                 fdmax = newsockfd;
               }
 
-              //
-
-              // fermeture socket écoute car connexion déjà établie avec
-              // adversaire
+              // On peut fermer la socket d'écoute puisqu'on vient d'accepter
+              // la communication avec un adversaire
               printf(
                   "[Port joueur : %d] Bloc if du serveur, fermeture socket "
                   "écoute\n",
@@ -1039,11 +1015,10 @@ static void *f_com_socket(void *p_arg) {
               close(sockfd);
             }
 
-            // fermeture et suppression de FD_SIGNAL de l'ensemble master
+            // On a plus besoind de vérifier si on clique sur "Démarrer Partie"
             close(fd_signal);
             FD_CLR(fd_signal, &master);
 
-            // Réception et traitement des messages du joueur adverse
             bzero(buf, MAX_DATA_SIZE);
             recv(newsockfd, buf, MAX_DATA_SIZE, 0);
 
@@ -1073,7 +1048,7 @@ static void *f_com_socket(void *p_arg) {
           }
         } else {
           if (i == newsockfd) {
-            // Réception et traitement des messages du joueur adverse
+            // On traite les infos provenant de l'adversaire
             bzero(buf, MAX_DATA_SIZE);
             nbytes = recv(newsockfd, buf, MAX_DATA_SIZE, 0);
 
