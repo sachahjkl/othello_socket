@@ -49,10 +49,7 @@ all: $(NAME)
 $(NAME): $(NAME).o
 	$(CC) $(CLIBS) $(CFLAGS) -o $(BIN)/$@ $(OBJ)/$<
 
-%.o: $(SRC)/%.c $(SRC)/%.h
-	$(CC) $(CFLAGS) -c $< -o $(OBJ)/$@ $(CLIBS)
-
-%.o: $(CDIR)/%.c $(CDIR)/%.h
+$(NAME).o: $(SRC)/$(NAME).c $(SRC)/$(NAME).h
 	$(CC) $(CFLAGS) -c $< -o $(OBJ)/$@ $(CLIBS)
 
 # Cleaning

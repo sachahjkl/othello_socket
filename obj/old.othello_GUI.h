@@ -7,18 +7,18 @@
 #define MAX_TITLE_LENGTH 45
 
 // Variables globales
-int damier[8][8];  // tableau associe au damier
-int couleur;       // 0 : pour noir, 1 : pour blanc
+int board[8][8];  // tableau associe au damier
+int couleur;      // 0 : pour noir, 1 : pour blanc
 
 char *port;  // numero port passé lors de l'appel
 
-char *addr_j2, *port_j2;  // Info sur adversaire
+char *adv_addr, *adv_port;  // Info sur adversaire
 
 pthread_t thread_id;  // Id du thread fils gerant connexion socket
 
-int sockfd, newsockfd = -1;   // descripteurs de socket
-int addr_size;                // taille adresse
-struct sockaddr *their_addr;  // structure pour stocker adresse adversaire
+int sockfd, newsockfd = -1;     // descripteurs de socket
+int addr_size;                  // taille adresse
+struct sockaddr *adv_sockaddr;  // structure pour stocker adresse adversaire
 
 fd_set master;  // ensembles de socket pour toutes les
                 // sockets actives avec select
@@ -107,7 +107,7 @@ void reset_liste_joueurs(void);
 
 /* Fonction permettant d'ajouter un joueur dans la liste des joueurs sur
  * l'interface graphique */
-void affich_joueur(char *login, char *adresse, char *port);
+void add_player_to_list(char *login, char *adresse, char *port);
 
 int init_socket(void);
 
