@@ -1869,7 +1869,7 @@ int main(int argc, char **argv) {
   // La boucle des échanges du jeu s'éxécutera dans la fonction f_com_socket
   error_code = pthread_create(&thread_id, NULL, f_com_socket, NULL);
   if (error_code != 0) {
-    fprintf(stderr, "%s", strerror(error_code));
+    fprintf(stderr, "%s\n", strerror(error_code));
     exit(1);
   }
 
