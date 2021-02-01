@@ -18,6 +18,8 @@
 #define IMG_WHITE_TOKEN "UI_Glade/case_blanc.png"
 #define LAYOUT_FILE "UI_Glade/Othello.glade"
 
+#define SEPARATOR ";"
+
 typedef enum color { BLACK, WHITE, EMPTY, OUT } color_e;
 typedef enum type { COORD, COLOR, END, NO_MOVE_POSSIBLE } type_e;
 
@@ -178,5 +180,9 @@ color_e get_adv_color(void);
 
 // Retourne la couleur adverse
 color_e get_opposite_color(color_e p_color);
+
+const char *get_type_str(type_e type);
+
+const char *get_color_str(color_e color);
 
 #endif

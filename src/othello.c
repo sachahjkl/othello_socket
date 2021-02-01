@@ -37,6 +37,36 @@ GtkBuilder *p_builder = NULL;
 GError *p_err = NULL;
 GtkWidget *p_win = NULL;
 
+const char *get_type_str(type_e type) {
+  switch (type) {
+    case COORD:
+      return "COORD";
+    case COLOR:
+      return "COLOR";
+    case END:
+      return "END";
+    case NO_MOVE_POSSIBLE:
+      return "NO_MOVE_POSSIBLE";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+const char *get_color_str(color_e color) {
+  switch (color) {
+    case BLACK:
+      return "BLACK";
+    case WHITE:
+      return "WHITE";
+    case OUT:
+      return "OUT";
+    case EMPTY:
+      return "EMPTY";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 void coord_to_indexes(const gchar *coord, int *col, int *row) {
   char *c;
   c = malloc(2 * sizeof(char));
@@ -184,8 +214,9 @@ void set_case(int col, int row, color_e p_color) {
     }
   }
   // On insere la case de la couleur du joueur qui joue
+  printf("[%d] cell {x: %d, y: %d} goes from %d to %d\n", port, col, row,
+         board[col][row], p_color);
   board[col][row] = p_color;
-  printf("[case %d;%d] passage à %d\n", col, row, p_color);
   // MAJ de l'image vers la couleur du joueur qui joue
   update_cell_image(col, row, p_color);
 }
@@ -330,9 +361,9 @@ static void on_click_cell(GtkWidget *p_case) {
     // préparation message et envoie sur socket à adversaire
     req.type = htons((unsigned short)END);
 
-    printf("[%d] request type : %u\n", port, req.type);
+    printf("[%d] request type : %s\n", port, get_type_str(ntohs(req.type)));
     bzero(buf, MAX_DATA_SIZE);
-    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
+    snprintf(buf, MAX_DATA_SIZE, "%hu", req.type);
 
     printf("[%d] sending request %s\n", port, buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -354,9 +385,9 @@ static void on_click_cell(GtkWidget *p_case) {
     // On dit que c'est finito
     req.type = htons((unsigned short)END);
 
-    printf("[%d] request type : %u\n", port, req.type);
+    printf("[%d] request type : %s\n", port, get_type_str(ntohs(req.type)));
     bzero(buf, MAX_DATA_SIZE);
-    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
+    snprintf(buf, MAX_DATA_SIZE, "%hu", req.type);
 
     printf("[%d] sending request %s\n", port, buf);
     // Et zé parti
@@ -374,9 +405,9 @@ static void on_click_cell(GtkWidget *p_case) {
     // On dit que je peux pas jouer azy j'ai le démon
     req.type = htons((unsigned short)NO_MOVE_POSSIBLE);
 
-    printf("[%d] request type : %u\n", port, req.type);
+    printf("[%d] request type : %s\n", port, get_type_str(ntohs(req.type)));
     bzero(buf, MAX_DATA_SIZE);
-    snprintf(buf, MAX_DATA_SIZE, "%u", req.type);
+    snprintf(buf, MAX_DATA_SIZE, "%hu", req.type);
 
     printf("[%d] sending request %s\n", port, buf);
     if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -394,16 +425,17 @@ static void on_click_cell(GtkWidget *p_case) {
       // MAJ Cellules et scores
       update_cells(col, row, get_player_color());
 
-      printf("[%d] have to send coords {%u;%u}\n", port, col, row);
+      printf("[%d] have to send coords {x: %d, y: %d}\n", port, col, row);
 
       // on envoie notre move à l'adversaire
       req.type = htons((unsigned short)COORD);
       req.x = htons((unsigned short)col);
       req.y = htons((unsigned short)row);
-      printf("[%d] sending request {type: %u, x: %u, y: %u}\n", port, req.type,
-             req.x, req.y);
+      printf("[%d] sending request {type: %s, x: %hu, y: %hu}\n", port,
+             get_type_str(ntohs(req.type)), ntohs(req.x), ntohs(req.y));
       bzero(buf, MAX_DATA_SIZE);
-      snprintf(buf, MAX_DATA_SIZE, "%u, %u, %u", req.type, req.x, req.y);
+      snprintf(buf, MAX_DATA_SIZE, "%hu%s%hu%s%hu", req.type, SEPARATOR, req.x,
+               SEPARATOR, req.y);
 
       printf("[%d] sending formatted request %s\n", port, buf);
       if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
@@ -857,7 +889,7 @@ void add_player_to_list(char *login, char *adresse, char *port_s) {
 // Big Boy fonction
 // Itération sur l'ensemble des sockets
 static void *f_com_socket(void *p_arg) {
-  int i, nbytes;
+  int i;
 
   char buf[MAX_DATA_SIZE];
 
@@ -865,7 +897,7 @@ static void *f_com_socket(void *p_arg) {
   int fd_signal, rv;
 
   char *token;
-  char *saveptr;
+  char *tokenptr;
 
   // Structure dans laquelle on range les données des échanges
   request_s req;
@@ -900,11 +932,11 @@ static void *f_com_socket(void *p_arg) {
     read_fds = master;  // copie des ensembles
 
     if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
-      perror("Problème avec select");
+      perror("select");
       exit(4);
     }
 
-    printf("[%d] Entrée dans boucle for\n", port);
+    printf("[%d] Start iterating over sockets\n", port);
     for (i = 0; i <= fdmax; ++i) {
       /*printf
          ("[%d] newsockfd=%d, iteration %d boucle for\n",
@@ -912,7 +944,6 @@ static void *f_com_socket(void *p_arg) {
 
       if (FD_ISSET(i, &read_fds)) {
         if (i == fd_signal) {
-          printf("i = fd_signal\n");
           /*
            * Cas où de l'envoie du signal par l'interface graphique
            * pour connexion au joueur adverse
@@ -932,14 +963,14 @@ static void *f_com_socket(void *p_arg) {
             for (p = servinfo; p != NULL; p = p->ai_next) {
               if ((newsockfd = socket(p->ai_family, p->ai_socktype,
                                       p->ai_protocol)) == -1) {
-                perror("client: socket");
+                perror("socket");
                 continue;
               }
               if (connect(newsockfd, p->ai_addr, p->ai_addrlen) ==
                   -1)  // connexion à la socket client
               {
                 close(newsockfd);
-                perror("client: connect");
+                perror("connect");
                 continue;
               }
               break;
@@ -971,11 +1002,13 @@ static void *f_com_socket(void *p_arg) {
             req.color = htons((unsigned short)get_adv_color());
 
             bzero(buf, MAX_DATA_SIZE);
+            printf("[%d] request {type: %s, color: %s}\n", port,
+                   get_type_str(ntohs(req.type)),
+                   get_color_str(ntohs(req.color)));
+            snprintf(buf, MAX_DATA_SIZE, "%hu%s%hu", req.type, SEPARATOR,
+                     req.color);
 
-            printf("Requête à envoyer %u : %u\n", req.type, req.color);
-            snprintf(buf, MAX_DATA_SIZE, "%u, %u", req.type, req.color);
-
-            printf("Envoyer requête %s\n", buf);
+            printf("[%d] sending formatted request : %s\n", port, buf);
             if (send(newsockfd, &buf, strlen(buf), 0) == -1) {
               perror("send");
               close(newsockfd);
@@ -987,7 +1020,6 @@ static void *f_com_socket(void *p_arg) {
         }
 
         if (i == sockfd) {  // Adversaire veut se connecter
-          printf("i == sockfd\n");
 
           if (newsockfd == -1) {
             addr_size = sizeof(adv_sockaddr);
@@ -995,7 +1027,7 @@ static void *f_com_socket(void *p_arg) {
             newsockfd = accept(sockfd, adv_sockaddr, (socklen_t *)&addr_size);
 
             if (newsockfd == -1) {
-              perror("failed to accept");
+              perror("accept");
             } else {
               // Si tout va bien, on peut l'ajouter à notre ensemble
               // de socket.
@@ -1007,31 +1039,29 @@ static void *f_com_socket(void *p_arg) {
 
               // On peut fermer la socket d'écoute puisqu'on vient d'accepter
               // la communication avec un adversaire
-              printf(
-                  "[Port joueur : %d] Bloc if du serveur, fermeture socket "
-                  "écoute\n",
-                  port);
+              printf("[%d] closing listening socket\n", port);
               FD_CLR(sockfd, &master);
               close(sockfd);
             }
 
-            // On a plus besoind de vérifier si on clique sur "Démarrer Partie"
+            // On a plus besoin de vérifier si on clique sur "Démarrer Partie"
             close(fd_signal);
             FD_CLR(fd_signal, &master);
 
             bzero(buf, MAX_DATA_SIZE);
             recv(newsockfd, buf, MAX_DATA_SIZE, 0);
 
-            token = strtok_r(buf, ",", &saveptr);
+            token = strtok_r(buf, SEPARATOR, &tokenptr);
             sscanf(token, "%hu", &(req.type));
             req.type = ntohs(req.type);
-            printf("type message %u\n", req.type);
+            printf("[%d] received type: %s\n", port, get_type_str(req.type));
 
             if (req.type == COLOR) {
-              token = strtok_r(NULL, ",", &saveptr);
+              token = strtok_r(NULL, SEPARATOR, &tokenptr);
               sscanf(token, "%hu", &(req.color));
               req.color = ntohs(req.color);
-              printf("couleur %hu\n", req.color);
+              printf("[%d] received color:  %s\n", port,
+                     get_color_str(req.color));
               set_player_couleur((color_e)req.color);
             }
 
@@ -1050,33 +1080,31 @@ static void *f_com_socket(void *p_arg) {
           if (i == newsockfd) {
             // On traite les infos provenant de l'adversaire
             bzero(buf, MAX_DATA_SIZE);
-            nbytes = recv(newsockfd, buf, MAX_DATA_SIZE, 0);
+            recv(newsockfd, buf, MAX_DATA_SIZE, 0);
 
-            printf("reception de %d octets\n", nbytes);
-
-            token = strtok_r(buf, ",", &saveptr);
+            token = strtok_r(buf, SEPARATOR, &tokenptr);
             sscanf(token, "%hu", &(req.type));
             req.type = ntohs(req.type);
-            printf("type message %u\n", req.type);
+            printf("[%d] received type: %s\n", port, get_type_str(req.type));
 
             if (req.type == COORD) {
-              token = strtok_r(NULL, ",", &saveptr);
+              token = strtok_r(NULL, SEPARATOR, &tokenptr);
               sscanf(token, "%hu", &(req.x));
               req.x = ntohs(req.x);
-              printf("x %hu\n", req.x);
 
-              token = strtok_r(NULL, ",", &saveptr);
+              token = strtok_r(NULL, SEPARATOR, &tokenptr);
               sscanf(token, "%hu", &(req.y));
               req.y = ntohs(req.y);
-              printf("y %hu\n", req.y);
+              printf("[%d] received coords {x: %hu y: %hu}\n", port, req.x,
+                     req.y);
               set_case(req.x, req.y, get_adv_color());
               update_cells(req.x, req.y, get_adv_color());
               unfreeze_board();
             } else if (req.type == NO_MOVE_POSSIBLE) {
-              printf("adversaire n'a pas plus jouer\n");
+              printf("[%d] adversary had no moves\n", port);
               unfreeze_board();
             } else if (req.type == END) {
-              printf("fin du jeu\n");
+              printf("[%d] GAME OVER\n", port);
               unfreeze_board();
             }
           }
@@ -1085,7 +1113,7 @@ static void *f_com_socket(void *p_arg) {
     }
   }
 
-  return (NULL);
+  return NULL;
 }
 
 // Fonction dans laquelle je place l'ensemble
