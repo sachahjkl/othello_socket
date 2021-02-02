@@ -214,8 +214,8 @@ void set_case(int col, int row, color_e p_color) {
     }
   }
   // On insere la case de la couleur du joueur qui joue
-  printf("[%d] cell {x: %d, y: %d} goes from %d to %d\n", port, col, row,
-         board[col][row], p_color);
+  printf("[%d] cell {x: %d, y: %d} goes from %s to %s\n", port, col, row,
+         get_color_str(board[col][row]), get_color_str(p_color));
   board[col][row] = p_color;
   // MAJ de l'image vers la couleur du joueur qui joue
   update_cell_image(col, row, p_color);
