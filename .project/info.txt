@@ -1,0 +1,2 @@
+name=othello_socket
+description=Projet en C utilisant bibliothèque GTK 3 implémentant le jeu d'Othello en multijoueur réseau via sockets TCP/IP.
