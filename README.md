@@ -1,5 +1,3 @@
-[English](README.md) | [Français](README.fr.md)
-
 # Operating Systems and Virtualization Project
 
 ## Project context
