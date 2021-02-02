@@ -1,21 +1,21 @@
-# Projet SE et Virtualisation 
+[English](README.md) | [Français](README.fr.md)
 
-## Contexte du projet
+# Operating Systems and Virtualization Project
 
-à définir
+## Project context
 
-## Compilation et exécution
+To be defined.
 
-Afin de compiler le projet, il suffit d'exécuter dans le repertoire la
-commande :
+## Build and execution
+
+To build the project, run this command in the project directory:
 
 ```bash
 gcc -Wall -o othello_GUI othello_GUI.c $(pkg-config --cflags --libs gtk+-3.0)
 ```
 
-### Lancement projet avec <num_port> le port TCP d'écoute :
+### Start the project with <num_port> as the TCP listening port
 
 ```bash
 ./othello_GUI <num_port>
 ```
-
